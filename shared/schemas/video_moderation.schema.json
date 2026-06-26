@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "VideoModerationUploadRequest",
+  "type": "object",
+  "required": ["content_id", "user_id", "file"],
+  "properties": {
+    "content_id": {
+      "type": "string"
+    },
+    "user_id": {
+      "type": "string"
+    },
+    "scene": {
+      "type": "string",
+      "default": "general"
+    },
+    "related_text": {
+      "type": ["string", "null"]
+    },
+    "provided_asr_text": {
+      "type": ["string", "null"]
+    },
+    "skip_ocr": {
+      "type": "boolean",
+      "default": false
+    },
+    "context": {
+      "type": "object"
+    },
+    "file": {
+      "type": "string",
+      "contentEncoding": "binary"
+    }
+  }
+}

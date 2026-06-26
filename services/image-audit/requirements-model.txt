@@ -1,0 +1,8 @@
+paddleocr>=3.7.0
+paddlepaddle>=3.3.1
+nudenet>=3.4.0
+onnxruntime>=1.17.0
+transformers>=4.40.0
+torch>=2.2.0
+torchvision>=0.17.0
+accelerate>=0.30.0

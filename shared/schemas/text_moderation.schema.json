@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "TextModerationRequest",
+  "type": "object",
+  "required": ["content_id", "user_id", "text"],
+  "properties": {
+    "content_id": {
+      "type": "string"
+    },
+    "user_id": {
+      "type": "string"
+    },
+    "scene": {
+      "type": "string",
+      "default": "general"
+    },
+    "text": {
+      "type": "string"
+    },
+    "related_text": {
+      "type": ["string", "null"]
+    },
+    "image_ocr_text": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "video_transcript": {
+      "type": ["string", "null"]
+    },
+    "context": {
+      "type": "object"
+    }
+  }
+}

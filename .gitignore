@@ -1,0 +1,37 @@
+# Secrets and local environment
+.env
+.env.*
+apikey.txt
+*.pem
+*.key
+
+# Python caches and virtual environments
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+env/
+
+# Node/frontend dependency caches
+node_modules/
+dist/
+build/
+
+# Runtime data, model weights, generated samples, and reports
+storage/
+
+# Local logs and temporary files
+*.log
+*.tmp
+*.temp
+.ocr_probe.json
+
+# OS/editor metadata
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

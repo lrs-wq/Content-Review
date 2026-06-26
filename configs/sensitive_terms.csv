@@ -1,0 +1,11 @@
+term,category,risk_level,match_type,action,enabled,notes
+加微信,ad,medium,compact,review,true,traffic diversion
+微信号,ad,medium,compact,review,true,traffic diversion
+私加,ad,medium,compact,review,true,private traffic diversion
+办证,fraud,high,compact,block,true,fake certificate
+代开发票,fraud,high,compact,block,true,illegal invoice
+裸聊,adult,high,compact,block,true,adult trade
+赌博,gambling,high,compact,block,true,gambling
+稳赚,fraud,medium,compact,review,true,investment fraud clue
+去死,violence,medium,compact,review,true,threatening language
+废物,insult,medium,compact,review,true,insult example

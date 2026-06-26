@@ -1,0 +1,121 @@
+policy_version: "2026.06.24"
+text:
+  block_score: 0.92
+  review_score: 0.65
+  rule_scores:
+    high: 0.95
+    medium: 0.75
+    low: 0.45
+  semantic:
+    enabled: false
+    model_name: "thu-coai/roberta-base-cold"
+    offensive_labels:
+      - "LABEL_1"
+      - "offensive"
+      - "toxic"
+      - "unsafe"
+  classifier:
+    enabled: true
+    model_path: "storage/models/text-classifier/text_classifier.joblib"
+    review_score: 0.55
+    block_score: 0.93
+    label_review_scores:
+      ad: 0.35
+      adult: 0.30
+      offensive: 0.50
+      weapon: 0.55
+    block_labels:
+      - "adult"
+      - "weapon"
+    label_actions:
+      ad: "review"
+      adult: "review"
+      offensive: "review"
+      weapon: "review"
+      safe: "allow"
+  agent:
+    enabled: true
+    provider: "heuristic"
+    gray_min_score: 0.45
+    gray_max_score: 0.92
+    max_context_chars: 3000
+    complex_context_keys:
+      - "title"
+      - "parent_comment"
+      - "root_text"
+      - "recent_messages"
+      - "image_ocr_text"
+      - "video_transcript"
+image:
+  max_image_bytes: 10485760
+  max_image_pixels: 25000000
+  nsfw_block_score: 0.90
+  nsfw_review_score: 0.60
+  nudity_block_score: 0.88
+  nudity_review_score: 0.55
+  skin_review_score: 0.70
+  qr_review_score: 0.65
+  ocr_review_score: 0.65
+  text_audit_url: "http://127.0.0.1:8010/v1/moderation/text"
+  text_audit_timeout_seconds: 5.0
+  ocr:
+    enabled: true
+    provider: "paddleocr"
+  nsfw_model:
+    enabled: true
+    model_name: "storage/models/falconsai-nsfw"
+    device: -1
+    download_on_request: false
+  nudenet:
+    enabled: true
+  vision_safety:
+    enabled: true
+    provider: "shieldgemma2_local"
+    model_name: "storage/models/shieldgemma-2-4b-it"
+    endpoint_url: ""
+    api_key_env: "VISION_SAFETY_API_KEY"
+    timeout_seconds: 30.0
+    device: "auto"
+    download_on_request: false
+    allow_cpu: false
+    trigger_mode: "gray"
+    gray_min_score: 0.30
+    gray_max_score: 0.90
+    review_score: 0.55
+    block_score: 0.85
+    max_new_tokens: 256
+    review_on_unavailable: true
+video:
+  max_video_bytes: 104857600
+  max_duration_seconds: 60.0
+  allowed_extensions:
+    - "mp4"
+    - "mov"
+    - "webm"
+    - "mkv"
+    - "avi"
+  frame_sample_fps: 1.0
+  max_sampled_frames: 60
+  frame_skip_ocr: true
+  stop_on_block: true
+  selective_ocr:
+    enabled: true
+    max_ocr_frames: 2
+    include_first_frame: true
+    include_last_frame: false
+    min_interval_seconds: 2.0
+    text_region_enabled: true
+    text_region_score: 0.35
+    retry_on_qr_or_risk: true
+  image_audit_url: "http://127.0.0.1:8020/v1/moderation/image/upload"
+  image_audit_timeout_seconds: 90.0
+  text_audit_url: "http://127.0.0.1:8010/v1/moderation/text"
+  text_audit_timeout_seconds: 10.0
+  ffmpeg_path: "ffmpeg"
+  ffprobe_path: "ffprobe"
+  asr:
+    enabled: false
+    provider: "faster_whisper"
+    model_name: "small"
+    device: "cpu"
+    compute_type: "int8"

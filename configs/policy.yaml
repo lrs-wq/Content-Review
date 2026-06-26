@@ -1,0 +1,79 @@
+version: "2026.06.24"
+default_scene: "general"
+actions:
+  allow: "pass content and keep audit log"
+  review: "send content to manual review queue"
+  block: "reject, hide, or hold content before publish"
+risk_categories:
+  ad:
+    name: "advertising_or_traffic_diversion"
+    default_action: "review"
+  fraud:
+    name: "fraud_or_black_market"
+    default_action: "block"
+  adult:
+    name: "adult_or_sexual_trade"
+    default_action: "block"
+  gambling:
+    name: "gambling"
+    default_action: "block"
+  weapon:
+    name: "weapon_or_explosive_illegal_trade"
+    default_action: "block"
+  url:
+    name: "risky_url_or_external_domain"
+    default_action: "review"
+  insult:
+    name: "insult_or_harassment"
+    default_action: "review"
+  violence:
+    name: "violence_or_threat"
+    default_action: "review"
+  political:
+    name: "political_or_public_affairs_sensitive"
+    default_action: "review"
+  nsfw:
+    name: "not_safe_for_work_visual_content"
+    default_action: "block"
+  nudity:
+    name: "nudity_or_exposed_body_region"
+    default_action: "block"
+  skin_exposure_heuristic:
+    name: "skin_exposure_heuristic_review_signal"
+    default_action: "review"
+  qr_code:
+    name: "qr_code_or_external_contact_route"
+    default_action: "review"
+  ocr_sensitive:
+    name: "sensitive_text_detected_from_image_ocr"
+    default_action: "review"
+  ocr_text_unchecked:
+    name: "image_ocr_text_found_but_text_audit_unavailable"
+    default_action: "review"
+  image_too_small:
+    name: "image_resolution_too_small_for_reliable_audit"
+    default_action: "review"
+  image_extreme_aspect_ratio:
+    name: "image_aspect_ratio_requires_review"
+    default_action: "review"
+  vision_safety:
+    name: "multimodal_vision_safety_model_risk"
+    default_action: "review"
+  vision_safety_unavailable:
+    name: "gray_image_routed_to_multimodal_review_but_provider_unavailable"
+    default_action: "review"
+  vision_sexual:
+    name: "multimodal_sexual_or_nudity_risk"
+    default_action: "block"
+  vision_violence_gore:
+    name: "multimodal_violence_gore_or_terrorism_risk"
+    default_action: "review"
+  vision_dangerous:
+    name: "multimodal_dangerous_or_illegal_activity_risk"
+    default_action: "review"
+  self_harm:
+    name: "self_harm_visual_risk"
+    default_action: "review"
+  hate:
+    name: "hate_or_extremism_visual_risk"
+    default_action: "review"

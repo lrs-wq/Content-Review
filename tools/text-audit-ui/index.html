@@ -1,0 +1,845 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>内容审核测试台</title>
+    <style>
+      :root {
+        --bg: #f5f6f8;
+        --panel: #ffffff;
+        --text: #18202a;
+        --muted: #667085;
+        --border: #d8dde6;
+        --brand: #2563eb;
+        --brand-soft: #eff6ff;
+        --allow: #12805c;
+        --review: #b54708;
+        --block: #b42318;
+        --code: #101828;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: var(--bg);
+        color: var(--text);
+        font-family:
+          "Microsoft YaHei",
+          "PingFang SC",
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+      }
+
+      .app {
+        display: grid;
+        grid-template-columns: minmax(380px, 480px) minmax(0, 1fr);
+        gap: 20px;
+        width: min(1320px, calc(100vw - 32px));
+        margin: 24px auto;
+      }
+
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 18px;
+      }
+
+      h1 {
+        margin: 0 0 14px;
+        font-size: 22px;
+        line-height: 1.3;
+      }
+
+      label {
+        display: block;
+        margin: 14px 0 6px;
+        color: #344054;
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      input,
+      select,
+      textarea {
+        width: 100%;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 10px 12px;
+        color: var(--text);
+        background: #fff;
+        font: inherit;
+      }
+
+      input[type="checkbox"] {
+        width: auto;
+      }
+
+      input[type="file"] {
+        padding: 9px;
+      }
+
+      textarea {
+        min-height: 108px;
+        resize: vertical;
+        line-height: 1.5;
+      }
+
+      .compact textarea {
+        min-height: 72px;
+      }
+
+      .tabs {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 8px;
+        margin-bottom: 16px;
+      }
+
+      .tab {
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 10px 12px;
+        color: var(--text);
+        background: #fff;
+        font-weight: 700;
+      }
+
+      .tab.active {
+        border-color: var(--brand);
+        color: var(--brand);
+        background: var(--brand-soft);
+      }
+
+      .mode-section {
+        display: none;
+      }
+
+      .mode-section.active {
+        display: block;
+      }
+
+      .row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+
+      .check-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 12px;
+        color: #344054;
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      .check-row label {
+        margin: 0;
+      }
+
+      .preview {
+        display: grid;
+        place-items: center;
+        min-height: 210px;
+        margin-top: 12px;
+        border: 1px dashed var(--border);
+        border-radius: 8px;
+        background: #fafbfc;
+        overflow: hidden;
+      }
+
+      .preview img {
+        display: none;
+        max-width: 100%;
+        max-height: 360px;
+        object-fit: contain;
+      }
+
+      .preview span {
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-top: 16px;
+      }
+
+      button {
+        border: 0;
+        border-radius: 6px;
+        padding: 10px 14px;
+        color: #fff;
+        background: var(--brand);
+        font: inherit;
+        font-weight: 700;
+        cursor: pointer;
+      }
+
+      button.secondary {
+        color: var(--text);
+        background: #eef2f7;
+      }
+
+      button:disabled {
+        cursor: not-allowed;
+        opacity: 0.65;
+      }
+
+      .status-grid {
+        display: grid;
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+        gap: 12px;
+        margin-bottom: 16px;
+      }
+
+      .metric {
+        min-height: 82px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 12px;
+        background: #fff;
+      }
+
+      .metric .name {
+        margin-bottom: 8px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .metric .value {
+        overflow-wrap: anywhere;
+        font-size: 17px;
+        font-weight: 800;
+        line-height: 1.25;
+      }
+
+      .value.allow {
+        color: var(--allow);
+      }
+
+      .value.review {
+        color: var(--review);
+      }
+
+      .value.block {
+        color: var(--block);
+      }
+
+      .chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: 8px 0 16px;
+      }
+
+      .chip {
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        padding: 5px 9px;
+        background: #fff;
+        color: #344054;
+        font-size: 12px;
+      }
+
+      .chip.block {
+        border-color: #fecdca;
+        color: var(--block);
+        background: #fffbfa;
+      }
+
+      .chip.review {
+        border-color: #fedf89;
+        color: var(--review);
+        background: #fffcf5;
+      }
+
+      pre {
+        overflow: auto;
+        max-height: 58vh;
+        margin: 0;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 14px;
+        background: var(--code);
+        color: #eef4ff;
+        font-size: 13px;
+        line-height: 1.55;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+
+      .error {
+        margin-top: 12px;
+        color: var(--block);
+        font-size: 13px;
+        word-break: break-word;
+      }
+
+      @media (max-width: 980px) {
+        .app {
+          grid-template-columns: 1fr;
+        }
+
+        .status-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+
+      @media (max-width: 520px) {
+        .app {
+          width: min(100vw - 20px, 1320px);
+          margin: 10px auto;
+        }
+
+        .row {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="app">
+      <section class="panel">
+        <h1>内容审核测试台</h1>
+
+        <div class="tabs" role="tablist">
+          <button class="tab active" type="button" data-tab="text">文本审核</button>
+          <button class="tab" type="button" data-tab="image">图片审核</button>
+          <button class="tab" type="button" data-tab="video">视频审核</button>
+        </div>
+
+        <section id="textPanel" class="mode-section active">
+          <label for="textApiUrl">文本审核接口</label>
+          <input id="textApiUrl" placeholder="http://当前主机:8010/v1/moderation/text" />
+
+          <label for="text">待审核文本</label>
+          <textarea id="text">杀兔子偿命 juj...</textarea>
+
+          <div class="compact">
+            <label for="relatedText">相关文本</label>
+            <textarea id="relatedText" placeholder="帖子标题、正文、父评论等"></textarea>
+
+            <label for="imageOcrText">图片 OCR 文本</label>
+            <textarea id="imageOcrText" placeholder="多条 OCR 文本可换行输入"></textarea>
+
+            <label for="videoTranscript">视频 ASR 文本</label>
+            <textarea id="videoTranscript" placeholder="视频语音转写或片段摘要"></textarea>
+
+            <label for="textContextJson">上下文 JSON</label>
+            <textarea id="textContextJson">{"parent_comment":"","recent_messages":[]}</textarea>
+          </div>
+
+          <div class="actions">
+            <button id="submitTextBtn" type="button">开始审核</button>
+            <button id="clearTextBtn" class="secondary" type="button">清空结果</button>
+          </div>
+        </section>
+
+        <section id="imagePanel" class="mode-section">
+          <label for="imageApiUrl">图片审核接口</label>
+          <input id="imageApiUrl" placeholder="http://当前主机:8020/v1/moderation/image/upload" />
+
+          <div class="row">
+            <div>
+              <label for="imageScene">场景</label>
+              <select id="imageScene">
+                <option value="manual_test">manual_test</option>
+                <option value="post_image">post_image</option>
+                <option value="comment_image">comment_image</option>
+                <option value="avatar">avatar</option>
+                <option value="cover">cover</option>
+              </select>
+            </div>
+            <div>
+              <label for="imageFile">图片文件</label>
+              <input id="imageFile" type="file" accept="image/*" />
+            </div>
+          </div>
+
+          <div class="preview">
+            <img id="imagePreview" alt="待审核图片预览" />
+            <span id="imagePreviewEmpty">未选择图片</span>
+          </div>
+
+          <div class="compact">
+            <label for="imageRelatedText">相关文本</label>
+            <textarea id="imageRelatedText" placeholder="标题、正文、评论上下文等"></textarea>
+
+            <label for="providedOcrText">已知 OCR 文本</label>
+            <textarea id="providedOcrText" placeholder="已有 OCR 结果可直接传入"></textarea>
+
+            <div class="check-row">
+              <input id="skipOcr" type="checkbox" />
+              <label for="skipOcr">跳过 OCR</label>
+            </div>
+
+            <label for="imageContextJson">上下文 JSON</label>
+            <textarea id="imageContextJson">{"source":"web_test"}</textarea>
+          </div>
+
+          <div class="actions">
+            <button id="submitImageBtn" type="button">开始审核</button>
+            <button id="clearImageBtn" class="secondary" type="button">清空结果</button>
+          </div>
+        </section>
+
+        <section id="videoPanel" class="mode-section">
+          <label for="videoApiUrl">视频审核接口</label>
+          <input id="videoApiUrl" placeholder="http://当前主机:8030/v1/moderation/video/upload" />
+
+          <div class="row">
+            <div>
+              <label for="videoScene">场景</label>
+              <select id="videoScene">
+                <option value="manual_test">manual_test</option>
+                <option value="post_video">post_video</option>
+                <option value="comment_video">comment_video</option>
+                <option value="profile_video">profile_video</option>
+              </select>
+            </div>
+            <div>
+              <label for="videoFile">视频文件</label>
+              <input id="videoFile" type="file" accept="video/*" />
+            </div>
+          </div>
+
+          <div class="compact">
+            <label for="videoRelatedText">相关文本</label>
+            <textarea id="videoRelatedText" placeholder="标题、正文、评论上下文等"></textarea>
+
+            <label for="providedAsrText">已有 ASR 文本</label>
+            <textarea id="providedAsrText" placeholder="已有语音转写可直接传入"></textarea>
+
+            <div class="check-row">
+              <input id="videoSkipOcr" type="checkbox" />
+              <label for="videoSkipOcr">强制跳过帧 OCR</label>
+            </div>
+
+            <label for="videoContextJson">上下文 JSON</label>
+            <textarea id="videoContextJson">{"source":"web_test"}</textarea>
+          </div>
+
+          <div class="actions">
+            <button id="submitVideoBtn" type="button">开始审核</button>
+            <button id="clearVideoBtn" class="secondary" type="button">清空结果</button>
+          </div>
+        </section>
+
+        <div id="error" class="error"></div>
+      </section>
+
+      <section class="panel">
+        <div class="status-grid">
+          <div class="metric">
+            <div class="name">Action</div>
+            <div id="actionValue" class="value">-</div>
+          </div>
+          <div class="metric">
+            <div class="name">Risk Level</div>
+            <div id="riskValue" class="value">-</div>
+          </div>
+          <div class="metric">
+            <div class="name">耗时</div>
+            <div id="timeValue" class="value">-</div>
+          </div>
+          <div class="metric">
+            <div id="metaNameA" class="name">Agent</div>
+            <div id="metaValueA" class="value">-</div>
+          </div>
+          <div class="metric">
+            <div id="metaNameB" class="name">Classifier</div>
+            <div id="metaValueB" class="value">-</div>
+          </div>
+          <div class="metric">
+            <div id="metaNameC" class="name">Trace</div>
+            <div id="metaValueC" class="value">-</div>
+          </div>
+        </div>
+
+        <div class="chips" id="chips"></div>
+        <pre id="result">{}</pre>
+      </section>
+    </main>
+
+    <script>
+      const $ = (selector) => document.querySelector(selector);
+
+      const textPanel = $("#textPanel");
+      const imagePanel = $("#imagePanel");
+      const videoPanel = $("#videoPanel");
+      const textApiUrl = $("#textApiUrl");
+      const imageApiUrl = $("#imageApiUrl");
+      const videoApiUrl = $("#videoApiUrl");
+      const text = $("#text");
+      const relatedText = $("#relatedText");
+      const imageOcrText = $("#imageOcrText");
+      const videoTranscript = $("#videoTranscript");
+      const textContextJson = $("#textContextJson");
+      const imageScene = $("#imageScene");
+      const imageFile = $("#imageFile");
+      const imagePreview = $("#imagePreview");
+      const imagePreviewEmpty = $("#imagePreviewEmpty");
+      const imageRelatedText = $("#imageRelatedText");
+      const providedOcrText = $("#providedOcrText");
+      const skipOcr = $("#skipOcr");
+      const imageContextJson = $("#imageContextJson");
+      const videoScene = $("#videoScene");
+      const videoFile = $("#videoFile");
+      const videoRelatedText = $("#videoRelatedText");
+      const providedAsrText = $("#providedAsrText");
+      const videoSkipOcr = $("#videoSkipOcr");
+      const videoContextJson = $("#videoContextJson");
+      const submitTextBtn = $("#submitTextBtn");
+      const submitImageBtn = $("#submitImageBtn");
+      const submitVideoBtn = $("#submitVideoBtn");
+      const clearTextBtn = $("#clearTextBtn");
+      const clearImageBtn = $("#clearImageBtn");
+      const clearVideoBtn = $("#clearVideoBtn");
+      const error = $("#error");
+      const result = $("#result");
+      const actionValue = $("#actionValue");
+      const riskValue = $("#riskValue");
+      const timeValue = $("#timeValue");
+      const metaNameA = $("#metaNameA");
+      const metaValueA = $("#metaValueA");
+      const metaNameB = $("#metaNameB");
+      const metaValueB = $("#metaValueB");
+      const metaNameC = $("#metaNameC");
+      const metaValueC = $("#metaValueC");
+      const chips = $("#chips");
+
+      const host = window.location.hostname || "127.0.0.1";
+      // Keep service URLs aligned with the host used to open the test page. This lets the same
+      // page work from localhost and from the LAN address, such as 192.168.1.200.
+      textApiUrl.value = `${window.location.protocol}//${host}:8010/v1/moderation/text`;
+      imageApiUrl.value = `${window.location.protocol}//${host}:8020/v1/moderation/image/upload`;
+      videoApiUrl.value = `${window.location.protocol}//${host}:8030/v1/moderation/video/upload`;
+
+      let previewObjectUrl = "";
+
+      function splitLines(value) {
+        return value
+          .split(/\r?\n/)
+          .map((item) => item.trim())
+          .filter(Boolean);
+      }
+
+      function parseContext(rawValue) {
+        const rawContext = rawValue.trim();
+        if (!rawContext) {
+          return {};
+        }
+        const parsed = JSON.parse(rawContext);
+        if (!parsed || Array.isArray(parsed) || typeof parsed !== "object") {
+          throw new Error("上下文 JSON 必须是对象");
+        }
+        return parsed;
+      }
+
+      function buildTextPayload() {
+        return {
+          content_id: `ui_text_${Date.now()}`,
+          user_id: "ui_tester",
+          scene: "manual_test",
+          text: text.value,
+          related_text: relatedText.value.trim() || null,
+          image_ocr_text: splitLines(imageOcrText.value),
+          video_transcript: videoTranscript.value.trim() || null,
+          context: parseContext(textContextJson.value),
+        };
+      }
+
+      function buildImagePayload() {
+        const file = imageFile.files && imageFile.files[0];
+        if (!file) {
+          throw new Error("请选择一张图片");
+        }
+
+        const form = new FormData();
+        form.append("content_id", `ui_image_${Date.now()}`);
+        form.append("user_id", "ui_tester");
+        form.append("scene", imageScene.value);
+        form.append("related_text", imageRelatedText.value.trim());
+        form.append("provided_ocr_text", providedOcrText.value.trim());
+        form.append("skip_ocr", skipOcr.checked ? "true" : "false");
+        form.append("context", JSON.stringify(parseContext(imageContextJson.value)));
+        form.append("file", file, file.name);
+        return form;
+      }
+
+      function buildVideoPayload() {
+        // Video moderation uses multipart/form-data because the backend must pass a real file path
+        // to ffprobe/ffmpeg. The "skip_ocr" checkbox means "force skip"; when it is unchecked the
+        // backend still defaults to selective OCR instead of OCRing every sampled frame.
+        const file = videoFile.files && videoFile.files[0];
+        if (!file) {
+          throw new Error("请选择一个视频");
+        }
+
+        const form = new FormData();
+        form.append("content_id", `ui_video_${Date.now()}`);
+        form.append("user_id", "ui_tester");
+        form.append("scene", videoScene.value);
+        form.append("related_text", videoRelatedText.value.trim());
+        form.append("provided_asr_text", providedAsrText.value.trim());
+        form.append("skip_ocr", videoSkipOcr.checked ? "true" : "false");
+        form.append("context", JSON.stringify(parseContext(videoContextJson.value)));
+        form.append("file", file, file.name);
+        return form;
+      }
+
+      function setValue(element, value, className) {
+        element.className = `value ${className || ""}`.trim();
+        element.textContent = value;
+      }
+
+      function scoreText(value) {
+        if (typeof value !== "number") {
+          return "";
+        }
+        return `:${value.toFixed(2)}`;
+      }
+
+      function addChip(textValue, className) {
+        const chip = document.createElement("span");
+        chip.className = `chip ${className || ""}`.trim();
+        chip.textContent = textValue;
+        chips.appendChild(chip);
+      }
+
+      function renderChips(response) {
+        chips.innerHTML = "";
+
+        for (const item of response.labels || []) {
+          addChip(`label:${item}`);
+        }
+
+        for (const item of response.hits || []) {
+          addChip(`hit:${item.term || item}`);
+        }
+
+        for (const item of (response.agent_review && response.agent_review.evidence) || []) {
+          addChip(`agent:${item}`, "review");
+        }
+
+        for (const detection of response.detections || []) {
+          const action = detection.action || "review";
+          addChip(
+            `${detection.label}${scoreText(detection.score)} ${detection.source || ""}`.trim(),
+            action,
+          );
+        }
+
+        const ocrLines = response.ocr && response.ocr.lines ? response.ocr.lines.slice(0, 6) : [];
+        for (const line of ocrLines) {
+          addChip(`ocr:${line}`, "review");
+        }
+
+        for (const item of response.evidence || []) {
+          addChip(`${item.type}:${item.label}@${item.timestamp_seconds ?? ""}`, item.action);
+        }
+      }
+
+      function renderCommon(response, elapsedMs) {
+        const action = response.action || "-";
+        const risk = response.risk_level || "-";
+        setValue(actionValue, action, action);
+        setValue(riskValue, risk, action);
+        setValue(timeValue, `${elapsedMs.toFixed(1)} ms`);
+        renderChips(response);
+        result.textContent = JSON.stringify(
+          { client_elapsed_ms: Number(elapsedMs.toFixed(1)), ...response },
+          null,
+          2,
+        );
+      }
+
+      function renderTextResult(response, elapsedMs) {
+        renderCommon(response, elapsedMs);
+        const agentUsed = response.agent_review ? response.agent_review.used : false;
+        const classifier = response.classifier_review;
+        metaNameA.textContent = "Agent";
+        metaNameB.textContent = "Classifier";
+        metaNameC.textContent = "Trace";
+        setValue(metaValueA, agentUsed ? "used" : "skip", agentUsed ? "review" : "");
+        setValue(
+          metaValueB,
+          classifier ? `${classifier.label}:${classifier.score}` : "-",
+          classifier && classifier.action !== "allow" ? "review" : "",
+        );
+        setValue(metaValueC, response.trace_id || "-");
+      }
+
+      function renderImageResult(response, elapsedMs) {
+        renderCommon(response, elapsedMs);
+        const modelStatus = response.model_status || {};
+        const image = response.image || {};
+        metaNameA.textContent = "Vision";
+        metaNameB.textContent = "OCR";
+        metaNameC.textContent = "Image";
+        setValue(
+          metaValueA,
+          modelStatus.vision_safety_review || modelStatus.vision_safety || "-",
+          modelStatus.vision_safety_review === "ok" ? "review" : "",
+        );
+        setValue(metaValueB, response.ocr ? response.ocr.status : "-", response.ocr && response.ocr.status !== "ok" ? "review" : "");
+        setValue(metaValueC, image.width && image.height ? `${image.width}x${image.height}` : "-");
+      }
+
+      function renderVideoResult(response, elapsedMs) {
+        // Surface the most useful video-specific signals in the summary cards while keeping the
+        // full raw response below for deeper debugging.
+        renderCommon(response, elapsedMs);
+        const video = response.video || {};
+        const asr = response.asr || {};
+        metaNameA.textContent = "Frames";
+        metaNameB.textContent = "ASR";
+        metaNameC.textContent = "Duration";
+        setValue(metaValueA, String(response.sampled_frames ?? "-"));
+        setValue(metaValueB, asr.status || "-", asr.status === "error" ? "review" : "");
+        setValue(metaValueC, typeof video.duration_seconds === "number" ? `${video.duration_seconds}s` : "-");
+      }
+
+      async function submitTextAudit() {
+        error.textContent = "";
+        submitTextBtn.disabled = true;
+        const payload = buildTextPayload();
+        const startedAt = performance.now();
+        try {
+          const response = await fetch(textApiUrl.value.trim(), {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json; charset=utf-8",
+            },
+            body: JSON.stringify(payload),
+          });
+          const elapsedMs = performance.now() - startedAt;
+          const body = await response.json();
+          if (!response.ok) {
+            throw new Error(JSON.stringify(body));
+          }
+          renderTextResult(body, elapsedMs);
+        } catch (err) {
+          error.textContent = err instanceof Error ? err.message : String(err);
+        } finally {
+          submitTextBtn.disabled = false;
+        }
+      }
+
+      async function submitImageAudit() {
+        error.textContent = "";
+        submitImageBtn.disabled = true;
+        const payload = buildImagePayload();
+        const startedAt = performance.now();
+        try {
+          const response = await fetch(imageApiUrl.value.trim(), {
+            method: "POST",
+            body: payload,
+          });
+          const elapsedMs = performance.now() - startedAt;
+          const body = await response.json();
+          if (!response.ok) {
+            throw new Error(JSON.stringify(body));
+          }
+          renderImageResult(body, elapsedMs);
+        } catch (err) {
+          error.textContent = err instanceof Error ? err.message : String(err);
+        } finally {
+          submitImageBtn.disabled = false;
+        }
+      }
+
+      async function submitVideoAudit() {
+        // A 60-second video can still take several seconds because it may sample many frames and
+        // selectively call OCR. The button is disabled to prevent accidental duplicate uploads.
+        error.textContent = "";
+        submitVideoBtn.disabled = true;
+        const payload = buildVideoPayload();
+        const startedAt = performance.now();
+        try {
+          const response = await fetch(videoApiUrl.value.trim(), {
+            method: "POST",
+            body: payload,
+          });
+          const elapsedMs = performance.now() - startedAt;
+          const body = await response.json();
+          if (!response.ok) {
+            throw new Error(JSON.stringify(body));
+          }
+          renderVideoResult(body, elapsedMs);
+        } catch (err) {
+          error.textContent = err instanceof Error ? err.message : String(err);
+        } finally {
+          submitVideoBtn.disabled = false;
+        }
+      }
+
+      function clearResult() {
+        error.textContent = "";
+        result.textContent = "{}";
+        chips.innerHTML = "";
+        setValue(actionValue, "-");
+        setValue(riskValue, "-");
+        setValue(timeValue, "-");
+        metaNameA.textContent = "Agent";
+        metaNameB.textContent = "Classifier";
+        metaNameC.textContent = "Trace";
+        setValue(metaValueA, "-");
+        setValue(metaValueB, "-");
+        setValue(metaValueC, "-");
+      }
+
+      function setActiveMode(mode) {
+        for (const tab of document.querySelectorAll(".tab")) {
+          tab.classList.toggle("active", tab.dataset.tab === mode);
+        }
+        textPanel.classList.toggle("active", mode === "text");
+        imagePanel.classList.toggle("active", mode === "image");
+        videoPanel.classList.toggle("active", mode === "video");
+        clearResult();
+      }
+
+      imageFile.addEventListener("change", () => {
+        const file = imageFile.files && imageFile.files[0];
+        if (previewObjectUrl) {
+          URL.revokeObjectURL(previewObjectUrl);
+          previewObjectUrl = "";
+        }
+        if (!file) {
+          imagePreview.removeAttribute("src");
+          imagePreview.style.display = "none";
+          imagePreviewEmpty.style.display = "inline";
+          return;
+        }
+        previewObjectUrl = URL.createObjectURL(file);
+        imagePreview.src = previewObjectUrl;
+        imagePreview.style.display = "block";
+        imagePreviewEmpty.style.display = "none";
+      });
+
+      for (const tab of document.querySelectorAll(".tab")) {
+        tab.addEventListener("click", () => setActiveMode(tab.dataset.tab));
+      }
+
+      submitTextBtn.addEventListener("click", submitTextAudit);
+      submitImageBtn.addEventListener("click", submitImageAudit);
+      submitVideoBtn.addEventListener("click", submitVideoAudit);
+      clearTextBtn.addEventListener("click", clearResult);
+      clearImageBtn.addEventListener("click", clearResult);
+      clearVideoBtn.addEventListener("click", clearResult);
+    </script>
+  </body>
+</html>

@@ -1,0 +1,150 @@
+term,category,risk_level,match_type,action,enabled,notes
+政治敏感占位词,political,high,compact,review,true,placeholder for China political sensitive terms
+领导人姓名占位,political,high,compact,review,true,replace or extend with maintained leader names and aliases
+政治谣言,political,high,compact,review,true,public affairs rumor example
+涉政敏感,political,high,compact,review,true,generic political sensitivity example
+习近平,political,high,compact,review,true,current top leader name
+习主席,political,high,compact,review,true,current top leader title alias
+习总书记,political,high,compact,review,true,current top leader title alias
+习近平主席,political,high,compact,review,true,current top leader title
+习近平总书记,political,high,compact,review,true,current top leader title
+李强,political,high,compact,review,true,current central leader name
+赵乐际,political,high,compact,review,true,current central leader name
+王沪宁,political,high,compact,review,true,current central leader name
+蔡奇,political,high,compact,review,true,current central leader name
+丁薛祥,political,high,compact,review,true,current central leader name
+李希,political,high,compact,review,true,current central leader name
+韩正,political,high,compact,review,true,current state leader name
+马兴瑞,political,high,compact,review,true,current politburo member name
+王毅,political,high,compact,review,true,current politburo member name
+尹力,political,high,compact,review,true,current politburo member name
+石泰峰,political,high,compact,review,true,current politburo member name
+刘国中,political,high,compact,review,true,current politburo member name
+李干杰,political,high,compact,review,true,current politburo member name
+李书磊,political,high,compact,review,true,current politburo member name
+李鸿忠,political,high,compact,review,true,current politburo member name
+何立峰,political,high,compact,review,true,current politburo member name
+张又侠,political,high,compact,review,true,current politburo member name
+张国清,political,high,compact,review,true,current politburo member name
+陈文清,political,high,compact,review,true,current politburo member name
+陈吉宁,political,high,compact,review,true,current politburo member name
+陈敏尔,political,high,compact,review,true,current politburo member name
+袁家军,political,high,compact,review,true,current politburo member name
+黄坤明,political,high,compact,review,true,current politburo member name
+刘金国,political,high,compact,review,true,current secretariat member name
+王小洪,political,high,compact,review,true,current secretariat/state councillor name
+张升民,political,high,compact,review,true,current central military commission name
+刘振立,political,high,compact,review,true,current central military commission name
+吴政隆,political,high,compact,review,true,current state council official name
+谌贻琴,political,high,compact,review,true,current state councillor name
+毛泽东,political,high,compact,review,true,historical top leader name
+周恩来,political,high,compact,review,true,historical state leader name
+刘少奇,political,high,compact,review,true,historical state leader name
+朱德,political,high,compact,review,true,historical state leader name
+邓小平,political,high,compact,review,true,historical top leader name
+陈云,political,high,compact,review,true,historical senior leader name
+江泽民,political,high,compact,review,true,former top leader name
+胡锦涛,political,high,compact,review,true,former top leader name
+胡耀邦,political,high,compact,review,true,former senior leader name
+赵紫阳,political,high,compact,review,true,former senior leader name
+华国锋,political,high,compact,review,true,former senior leader name
+李鹏,political,high,compact,review,true,former state leader name
+朱镕基,political,high,compact,review,true,former state leader name
+温家宝,political,high,compact,review,true,former state leader name
+李克强,political,high,compact,review,true,former state leader name
+中国共产党,political,medium,compact,review,true,party institution
+中共中央,political,medium,compact,review,true,party institution
+党中央,political,medium,compact,review,true,party institution
+中央政治局,political,medium,compact,review,true,party institution
+中央政治局常委,political,medium,compact,review,true,party institution
+中央委员会,political,medium,compact,review,true,party institution
+中央书记处,political,medium,compact,review,true,party institution
+中央军委,political,medium,compact,review,true,military institution
+中央纪委,political,medium,compact,review,true,discipline institution
+国家监委,political,medium,compact,review,true,supervision institution
+国务院,political,medium,compact,review,true,state institution
+全国人大,political,medium,compact,review,true,state institution
+全国政协,political,medium,compact,review,true,state institution
+最高人民法院,political,medium,compact,review,true,state institution
+最高人民检察院,political,medium,compact,review,true,state institution
+公安部,political,medium,compact,review,true,state institution
+国家安全部,political,medium,compact,review,true,state institution
+国安部,political,medium,compact,review,true,state institution alias
+外交部,political,medium,compact,review,true,state institution
+国防部,political,medium,compact,review,true,state institution
+解放军,political,medium,compact,review,true,military institution
+中国人民解放军,political,medium,compact,review,true,military institution
+武警,political,medium,compact,review,true,paramilitary institution
+总书记,political,medium,compact,review,true,political title
+国家主席,political,medium,compact,review,true,political title
+国务院总理,political,medium,compact,review,true,political title
+委员长,political,medium,compact,review,true,political title
+政协主席,political,medium,compact,review,true,political title
+军委主席,political,medium,compact,review,true,political title
+纪委书记,political,medium,compact,review,true,political title
+政治局常委,political,medium,compact,review,true,political title
+国家领导人,political,medium,compact,review,true,generic leader title
+党和国家领导人,political,medium,compact,review,true,generic leader title
+党代会,political,medium,compact,review,true,political event
+全国两会,political,medium,compact,review,true,political event
+两会,political,medium,compact,review,true,political event
+人大会议,political,medium,compact,review,true,political event
+政协会议,political,medium,compact,review,true,political event
+二十大,political,medium,compact,review,true,political congress keyword
+二十届三中全会,political,medium,compact,review,true,party plenum keyword
+十九大,political,medium,compact,review,true,political congress keyword
+十八大,political,medium,compact,review,true,political congress keyword
+改革开放,political,medium,compact,review,true,major political history keyword
+文化大革命,political,high,compact,review,true,major political history keyword
+文革,political,high,compact,review,true,major political history keyword
+大跃进,political,high,compact,review,true,major political history keyword
+反右,political,high,compact,review,true,major political history keyword
+六四,political,high,compact,review,true,major sensitive event keyword
+八九学运,political,high,compact,review,true,major sensitive event keyword
+天安门事件,political,high,compact,review,true,major sensitive event keyword
+天安门广场事件,political,high,compact,review,true,major sensitive event keyword
+法轮功,political,high,compact,review,true,high-risk political/religious movement keyword
+香港,political,medium,compact,review,true,regional political keyword
+澳门,political,medium,compact,review,true,regional political keyword
+台湾,political,medium,compact,review,true,regional political keyword
+新疆,political,medium,compact,review,true,regional political keyword
+西藏,political,medium,compact,review,true,regional political keyword
+内蒙古,political,medium,compact,review,true,regional political keyword
+台独,political,high,compact,review,true,separatism keyword
+藏独,political,high,compact,review,true,separatism keyword
+疆独,political,high,compact,review,true,separatism keyword
+港独,political,high,compact,review,true,separatism keyword
+分裂国家,political,high,compact,review,true,national security keyword
+煽动颠覆,political,high,compact,review,true,national security keyword
+颠覆国家政权,political,high,compact,review,true,national security keyword
+颜色革命,political,high,compact,review,true,political movement keyword
+民主运动,political,medium,compact,review,true,political movement keyword
+人权,political,medium,compact,review,true,public affairs keyword
+维权,political,medium,compact,review,true,public affairs keyword
+上访,political,medium,compact,review,true,public affairs keyword
+信访,political,medium,compact,review,true,public affairs keyword
+游行,political,medium,compact,review,true,public assembly keyword
+示威,political,medium,compact,review,true,public assembly keyword
+集会,political,medium,compact,review,true,public assembly keyword
+罢工,political,medium,compact,review,true,public assembly keyword
+抗议,political,medium,compact,review,true,public assembly keyword
+群体性事件,political,high,compact,review,true,public security keyword
+维稳,political,high,compact,review,true,public security keyword
+封控,political,medium,compact,review,true,public affairs keyword
+疫情封控,political,medium,compact,review,true,public affairs keyword
+白纸运动,political,high,compact,review,true,public movement keyword
+反腐,political,medium,compact,review,true,public affairs keyword
+腐败,political,medium,compact,review,true,public affairs keyword
+贪腐,political,medium,compact,review,true,public affairs keyword
+官商勾结,political,medium,compact,review,true,public affairs keyword
+实名举报,political,medium,compact,review,true,public affairs keyword
+政治谣言,political,high,compact,review,true,public affairs rumor keyword
+涉政谣言,political,high,compact,review,true,public affairs rumor keyword
+境外势力,political,high,compact,review,true,national security keyword
+反华势力,political,high,compact,review,true,national security keyword
+美国总统,political,medium,compact,review,true,foreign political title
+白宫,political,medium,compact,review,true,foreign political institution
+美国国会,political,medium,compact,review,true,foreign political institution
+国务院制裁,political,medium,compact,review,true,foreign sanctions keyword
+欧盟制裁,political,medium,compact,review,true,foreign sanctions keyword
+联合国制裁,political,medium,compact,review,true,foreign sanctions keyword
