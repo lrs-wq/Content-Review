@@ -135,9 +135,9 @@ class VideoAuditor:
                         ocr_timestamps.append(frame.timestamp_seconds)
                 frame_results.append(result)
 
-                # For synchronous upload, stop after a decisive block to avoid doing unnecessary
-                # work on the remaining frames. Async production jobs may choose to continue for
-                # richer evidence collection.
+                # Optional fast-fail mode: stop after a decisive block to avoid doing unnecessary
+                # work on the remaining frames. The default is disabled so 60-second test videos
+                # still return evidence across the full sampled timeline.
                 if self.settings.stop_on_block and result.action == "block":
                     break
 
@@ -169,7 +169,8 @@ class VideoAuditor:
             labels=decision.labels,
             scores=decision.scores,
             video=probe_result.metadata,
-            sampled_frames=len(frame_results),
+            sampled_frames=len(frames),
+            audited_frames=len(frame_results),
             frame_results=frame_results,
             ocr_text=ocr_text,
             asr=asr_result,

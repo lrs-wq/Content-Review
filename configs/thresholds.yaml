@@ -97,7 +97,7 @@ video:
   frame_sample_fps: 1.0
   max_sampled_frames: 60
   frame_skip_ocr: true
-  stop_on_block: true
+  stop_on_block: false
   selective_ocr:
     enabled: true
     max_ocr_frames: 2

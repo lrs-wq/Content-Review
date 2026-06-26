@@ -112,7 +112,7 @@ def get_settings() -> Settings:
         frame_sample_fps=float(os.getenv("VIDEO_AUDIT_FRAME_SAMPLE_FPS", str(video_config.get("frame_sample_fps", 1.0)))),
         max_sampled_frames=int(os.getenv("VIDEO_AUDIT_MAX_SAMPLED_FRAMES", str(video_config.get("max_sampled_frames", 60)))),
         frame_skip_ocr=_env_bool("VIDEO_AUDIT_FRAME_SKIP_OCR", bool(video_config.get("frame_skip_ocr", True))),
-        stop_on_block=_env_bool("VIDEO_AUDIT_STOP_ON_BLOCK", bool(video_config.get("stop_on_block", True))),
+        stop_on_block=_env_bool("VIDEO_AUDIT_STOP_ON_BLOCK", bool(video_config.get("stop_on_block", False))),
         selective_ocr_enabled=_env_bool(
             "VIDEO_AUDIT_SELECTIVE_OCR_ENABLED",
             bool(selective_ocr_config.get("enabled", True)),

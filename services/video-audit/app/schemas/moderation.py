@@ -111,6 +111,7 @@ class VideoModerationResponse(BaseModel):
     scores: dict[str, float]
     video: VideoMetadata
     sampled_frames: int
+    audited_frames: int
     frame_results: list[FrameAuditPayload]
     ocr_text: str
     asr: AsrPayload

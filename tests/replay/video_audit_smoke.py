@@ -65,6 +65,7 @@ def run_valid_case(api_url: str, video_path: Path) -> dict[str, Any]:
         "risk_level": body["risk_level"],
         "labels": body["labels"],
         "sampled_frames": body["sampled_frames"],
+        "audited_frames": body["audited_frames"],
         "duration_seconds": body["video"]["duration_seconds"],
         "elapsed_ms": body["elapsed_ms"],
     }

@@ -708,7 +708,7 @@
         metaNameA.textContent = "Frames";
         metaNameB.textContent = "ASR";
         metaNameC.textContent = "Duration";
-        setValue(metaValueA, String(response.sampled_frames ?? "-"));
+        setValue(metaValueA, `${response.audited_frames ?? "-"} / ${response.sampled_frames ?? "-"}`);
         setValue(metaValueB, asr.status || "-", asr.status === "error" ? "review" : "");
         setValue(metaValueC, typeof video.duration_seconds === "number" ? `${video.duration_seconds}s` : "-");
       }
