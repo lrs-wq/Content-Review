@@ -1,3 +1,5 @@
+"""HTTP clients used by video-audit-service to reuse image and text services."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -42,6 +44,7 @@ class ImageAuditClient:
             "source": "video-audit-service",
             "source_content_id": content_id,
             "frame_index": frame.index,
+            "frame_source": frame.source,
             "timestamp_seconds": frame.timestamp_seconds,
         }
         data = {
@@ -58,14 +61,17 @@ class ImageAuditClient:
             with frame.path.open("rb") as stream:
                 files = {"file": (frame.path.name, stream, "image/jpeg")}
                 with httpx.Client(timeout=self.timeout) as client:
-                    response = client.post(self.url, data=data, files=files)
+                    response = client.post(self.url, params={"brief": "false"}, data=data, files=files)
                     response.raise_for_status()
                     body = response.json()
             return self._to_frame_payload(frame, body, skip_ocr=skip_ocr, ocr_reason=ocr_reason)
         except Exception as exc:
+            # A failed frame call is treated as review rather than allow. This preserves safety
+            # when downstream image-audit-service is temporarily unavailable.
             return FrameAuditPayload(
                 index=frame.index,
                 timestamp_seconds=frame.timestamp_seconds,
+                source=frame.source,
                 action="review",
                 risk_level="medium",
                 labels=["frame_audit_error"],
@@ -110,6 +116,7 @@ class ImageAuditClient:
         return FrameAuditPayload(
             index=frame.index,
             timestamp_seconds=frame.timestamp_seconds,
+            source=frame.source,
             action=str(body.get("action", "allow")),
             risk_level=str(body.get("risk_level", "none")),
             labels=list(body.get("labels", [])),
@@ -169,7 +176,7 @@ class TextAuditClient:
         }
         try:
             with httpx.Client(timeout=self.timeout) as client:
-                response = client.post(self.url, json=request_body)
+                response = client.post(self.url, params={"brief": "false"}, json=request_body)
                 response.raise_for_status()
                 body = response.json()
             return TextReviewPayload(
@@ -182,6 +189,8 @@ class TextAuditClient:
                 trace_id=body.get("trace_id"),
             )
         except Exception as exc:
+            # If aggregated video text cannot be checked, manual review is safer than allowing a
+            # possibly risky transcript/OCR package through silently.
             return TextReviewPayload(
                 used=True,
                 status="error",

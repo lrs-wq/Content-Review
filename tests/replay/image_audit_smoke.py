@@ -1,3 +1,5 @@
+"""Smoke tests for image-audit-service using synthetic local images."""
+
 from __future__ import annotations
 
 import base64
@@ -19,12 +21,16 @@ from app.main import app  # noqa: E402
 
 
 def encode_image(image: Image.Image) -> str:
+    """Encode a generated PIL image into API-compatible base64."""
+
     buffer = BytesIO()
     image.save(buffer, format="PNG")
     return base64.b64encode(buffer.getvalue()).decode("ascii")
 
 
 def plain_image() -> Image.Image:
+    """Create a benign synthetic image for allow-path checks."""
+
     image = Image.new("RGB", (320, 180), "#f4f6f8")
     draw = ImageDraw.Draw(image)
     draw.rectangle((20, 20, 300, 160), outline="#90a4ae", width=3)
@@ -33,6 +39,8 @@ def plain_image() -> Image.Image:
 
 
 def skin_like_image() -> Image.Image:
+    """Create a skin-tone synthetic image to exercise heuristic/vision-safety routing."""
+
     image = Image.new("RGB", (320, 180), "#e1a078")
     draw = ImageDraw.Draw(image)
     draw.rectangle((40, 35, 280, 145), outline="#8d6e63", width=4)
@@ -40,6 +48,8 @@ def skin_like_image() -> Image.Image:
 
 
 def run_case(client: TestClient, name: str, image: Image.Image, provided_ocr_text: str | None = None) -> dict:
+    """Submit one synthetic image and return compact result fields."""
+
     payload = {
         "content_id": name,
         "user_id": "image_smoke",
@@ -49,7 +59,7 @@ def run_case(client: TestClient, name: str, image: Image.Image, provided_ocr_tex
         "context": {},
     }
     started = time.perf_counter()
-    response = client.post("/v1/moderation/image", json=payload)
+    response = client.post("/v1/moderation/image", params={"brief": "false"}, json=payload)
     elapsed_ms = (time.perf_counter() - started) * 1000
     response.raise_for_status()
     body = response.json()
@@ -66,6 +76,8 @@ def run_case(client: TestClient, name: str, image: Image.Image, provided_ocr_tex
 
 
 def main() -> None:
+    """Run local TestClient checks without starting image-audit-service over HTTP."""
+
     client = TestClient(app)
     results = [
         run_case(client, "safe_image", plain_image()),

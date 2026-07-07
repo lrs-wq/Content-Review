@@ -1,3 +1,5 @@
+"""Pipeline coordinator for video moderation."""
+
 from __future__ import annotations
 
 import tempfile
@@ -81,8 +83,13 @@ class VideoAuditor:
         probe_result = self.probe.probe(payload.video_path, payload.filename, payload.mime_type, payload.bytes)
 
         # ASR is optional. If upstream already provides a transcript, we use it directly and avoid
-        # local transcription cost. The default deployment keeps local ASR disabled.
-        asr_result = self.asr.transcribe(payload.video_path, payload.provided_asr_text).payload
+        # local transcription cost. If the video has no audio stream, ASR is skipped cleanly.
+        has_audio_stream = bool(probe_result.metadata.audio_codec)
+        asr_result = self.asr.transcribe(
+            payload.video_path,
+            payload.provided_asr_text,
+            has_audio=has_audio_stream,
+        ).payload
 
         # Frames are temporary evidence for this synchronous request only. Persisting frame images
         # should be added later in an evidence store if manual review needs snapshots.

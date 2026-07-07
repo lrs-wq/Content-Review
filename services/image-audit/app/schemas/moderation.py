@@ -1,3 +1,5 @@
+"""Pydantic schemas for image moderation requests and responses."""
+
 from __future__ import annotations
 
 from typing import Any, Literal
@@ -10,6 +12,8 @@ Action = Literal["allow", "review", "block", "mask"]
 
 
 class ImageModerationRequest(BaseModel):
+    """Image request supporting JSON base64/URL input and multipart-upload bytes."""
+
     content_id: str = Field(..., min_length=1)
     user_id: str = Field(..., min_length=1)
     scene: str = Field(default="general")
@@ -22,15 +26,20 @@ class ImageModerationRequest(BaseModel):
     provided_ocr_text: str | None = None
     skip_ocr: bool = False
     context: dict[str, Any] = Field(default_factory=dict)
+    brief: bool = Field(default=True, exclude=True)
 
     @model_validator(mode="after")
     def require_image_source(self) -> "ImageModerationRequest":
+        """Ensure the auditor always has exactly some image source to load."""
+
         if not self.image_base64 and not self.image_url and not self.image_bytes:
             raise ValueError("one of image_base64, image_url, or image_bytes is required")
         return self
 
 
 class ImageMetadata(BaseModel):
+    """Stable image facts returned with every moderation response."""
+
     width: int
     height: int
     format: str
@@ -41,6 +50,8 @@ class ImageMetadata(BaseModel):
 
 
 class DetectionPayload(BaseModel):
+    """One visual or multimodal risk signal found in the image."""
+
     label: str
     score: float
     box: list[float] | None = None
@@ -51,6 +62,8 @@ class DetectionPayload(BaseModel):
 
 
 class OcrPayload(BaseModel):
+    """OCR result returned whether text was provided, recognized, skipped, or errored."""
+
     status: str
     text: str
     lines: list[str]
@@ -60,6 +73,8 @@ class OcrPayload(BaseModel):
 
 
 class TextReviewPayload(BaseModel):
+    """Text-audit-service result for OCR or provided image text."""
+
     used: bool
     status: str
     action: str = "allow"
@@ -71,6 +86,8 @@ class TextReviewPayload(BaseModel):
 
 
 class ImageModerationResponse(BaseModel):
+    """Final image moderation response combining visual, OCR, and text risk."""
+
     trace_id: str
     content_id: str
     risk_level: RiskLevel
@@ -86,7 +103,17 @@ class ImageModerationResponse(BaseModel):
     elapsed_ms: float
 
 
+class BriefModerationResponse(BaseModel):
+    """Default compact response for business callers that only need the final decision."""
+
+    content_id: str
+    result: Action
+    reason: str
+
+
 class HealthResponse(BaseModel):
+    """Readiness response used by probes and the web test page."""
+
     status: str
     service: str
     policy_version: str

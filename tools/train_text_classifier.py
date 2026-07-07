@@ -1,3 +1,5 @@
+"""Train the lightweight text classifier used by text-audit-service."""
+
 from __future__ import annotations
 
 import csv
@@ -78,6 +80,8 @@ SAFE_EXTRAS = [
 
 
 def download(filename: str, url: str) -> Path:
+    """Download a public training source into the local sample cache."""
+
     RAW_DIR.mkdir(parents=True, exist_ok=True)
     path = RAW_DIR / filename
     if path.exists() and path.stat().st_size > 0:
@@ -89,6 +93,8 @@ def download(filename: str, url: str) -> Path:
 
 
 def parse_terms(path: Path) -> list[str]:
+    """Parse a raw term dictionary into de-duplicated training terms."""
+
     text = path.read_text(encoding="utf-8-sig", errors="ignore")
     result: list[str] = []
     for line in text.splitlines():
@@ -100,6 +106,8 @@ def parse_terms(path: Path) -> list[str]:
 
 
 def parse_cold(path: Path) -> tuple[list[str], list[str]]:
+    """Parse COLDataset into safe and offensive example lists."""
+
     safe: list[str] = []
     offensive: list[str] = []
     with path.open("r", encoding="utf-8-sig", newline="") as stream:
@@ -117,6 +125,8 @@ def parse_cold(path: Path) -> tuple[list[str], list[str]]:
 
 
 def build_examples() -> tuple[list[str], list[str]]:
+    """Build synthetic and public examples for all supported classifier labels."""
+
     texts: list[str] = []
     labels: list[str] = []
 
@@ -144,6 +154,8 @@ def build_examples() -> tuple[list[str], list[str]]:
 
 
 def dedupe(items: list[str]) -> list[str]:
+    """Preserve first occurrence order while removing duplicate strings."""
+
     seen: set[str] = set()
     output: list[str] = []
     for item in items:
@@ -155,6 +167,8 @@ def dedupe(items: list[str]) -> list[str]:
 
 
 def train() -> tuple[Path, Path]:
+    """Train and persist the TF-IDF + LogisticRegression classifier artifact."""
+
     random.seed(20260624)
     texts, labels = build_examples()
     counts = Counter(labels)
@@ -167,6 +181,8 @@ def train() -> tuple[Path, Path]:
         stratify=labels,
     )
 
+    # Character n-grams work reasonably well for Chinese moderation samples and tolerate common
+    # obfuscation without a tokenizer dependency.
     pipeline = Pipeline(
         steps=[
             (
@@ -225,6 +241,8 @@ def train() -> tuple[Path, Path]:
 
 
 def main() -> None:
+    """CLI entrypoint for classifier training."""
+
     model_path, report_path = train()
     print(str(model_path))
     print(str(report_path))
@@ -232,4 +250,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

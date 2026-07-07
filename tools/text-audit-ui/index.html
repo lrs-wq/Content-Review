@@ -1,4 +1,9 @@
 <!doctype html>
+<!--
+  Manual content-review test page.
+  It is intentionally static and calls the three local services directly:
+  text-audit-service:8010, image-audit-service:8020, video-audit-service:8030.
+-->
 <html lang="zh-CN">
   <head>
     <meta charset="utf-8" />
@@ -475,6 +480,7 @@
     </main>
 
     <script>
+      // Keep DOM lookups short because this page has no build step or frontend framework.
       const $ = (selector) => document.querySelector(selector);
 
       const textPanel = $("#textPanel");
@@ -623,6 +629,10 @@
       function renderChips(response) {
         chips.innerHTML = "";
 
+        if (response.reason) {
+          addChip(`reason:${response.reason}`, response.result || response.action || "review");
+        }
+
         for (const item of response.labels || []) {
           addChip(`label:${item}`);
         }
@@ -654,8 +664,8 @@
       }
 
       function renderCommon(response, elapsedMs) {
-        const action = response.action || "-";
-        const risk = response.risk_level || "-";
+        const action = response.action || response.result || "-";
+        const risk = response.risk_level || (action === "allow" ? "low" : "-");
         setValue(actionValue, action, action);
         setValue(riskValue, risk, action);
         setValue(timeValue, `${elapsedMs.toFixed(1)} ms`);
@@ -667,8 +677,25 @@
         );
       }
 
+      function isBriefResponse(response) {
+        return Boolean(response.result && response.reason && !response.action);
+      }
+
+      function renderBriefMeta(response) {
+        metaNameA.textContent = "Content";
+        metaNameB.textContent = "Result";
+        metaNameC.textContent = "Reason";
+        setValue(metaValueA, response.content_id || "-");
+        setValue(metaValueB, response.result || "-", response.result || "");
+        setValue(metaValueC, response.reason || "-");
+      }
+
       function renderTextResult(response, elapsedMs) {
         renderCommon(response, elapsedMs);
+        if (isBriefResponse(response)) {
+          renderBriefMeta(response);
+          return;
+        }
         const agentUsed = response.agent_review ? response.agent_review.used : false;
         const classifier = response.classifier_review;
         metaNameA.textContent = "Agent";
@@ -685,6 +712,10 @@
 
       function renderImageResult(response, elapsedMs) {
         renderCommon(response, elapsedMs);
+        if (isBriefResponse(response)) {
+          renderBriefMeta(response);
+          return;
+        }
         const modelStatus = response.model_status || {};
         const image = response.image || {};
         metaNameA.textContent = "Vision";
@@ -703,12 +734,21 @@
         // Surface the most useful video-specific signals in the summary cards while keeping the
         // full raw response below for deeper debugging.
         renderCommon(response, elapsedMs);
+        if (isBriefResponse(response)) {
+          renderBriefMeta(response);
+          return;
+        }
         const video = response.video || {};
         const asr = response.asr || {};
+        const frameResults = response.frame_results || [];
+        const sceneFrameCount = frameResults.filter((frame) => frame.source === "scene_detect").length;
         metaNameA.textContent = "Frames";
         metaNameB.textContent = "ASR";
         metaNameC.textContent = "Duration";
-        setValue(metaValueA, `${response.audited_frames ?? "-"} / ${response.sampled_frames ?? "-"}`);
+        setValue(
+          metaValueA,
+          `${response.audited_frames ?? "-"} / ${response.sampled_frames ?? "-"} (${sceneFrameCount} scene)`,
+        );
         setValue(metaValueB, asr.status || "-", asr.status === "error" ? "review" : "");
         setValue(metaValueC, typeof video.duration_seconds === "number" ? `${video.duration_seconds}s` : "-");
       }

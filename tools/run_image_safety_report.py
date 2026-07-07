@@ -1,3 +1,5 @@
+"""Run image safety benchmark reports against image-audit-service."""
+
 from __future__ import annotations
 
 import argparse
@@ -37,6 +39,8 @@ IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".bmp"}
 
 @dataclass(frozen=True)
 class ImageCase:
+    """One image benchmark sample with expected moderation behavior."""
+
     dataset: str
     path: Path
     category: str
@@ -45,6 +49,8 @@ class ImageCase:
 
 
 def download_file(url: str, path: Path, expected_md5: str | None = None) -> Path:
+    """Download a file with optional checksum validation and local cache reuse."""
+
     path.parent.mkdir(parents=True, exist_ok=True)
     if path.exists() and path.stat().st_size > 0:
         if expected_md5 and md5(path) != expected_md5:
@@ -60,6 +66,8 @@ def download_file(url: str, path: Path, expected_md5: str | None = None) -> Path
 
 
 def md5(path: Path) -> str:
+    """Compute MD5 for public dataset archive integrity checks."""
+
     digest = hashlib.md5()
     with path.open("rb") as stream:
         for chunk in iter(lambda: stream.read(1024 * 1024), b""):
@@ -68,10 +76,14 @@ def md5(path: Path) -> str:
 
 
 def sha256_bytes(data: bytes) -> str:
+    """Hash image bytes for reports without exposing raw images."""
+
     return hashlib.sha256(data).hexdigest()
 
 
 def prepare_c4censor(refresh: bool = False) -> Path:
+    """Download and extract C4Censor into storage/samples."""
+
     target_root = DATA_ROOT / "c4censor"
     archive = target_root / "Dataset.tar"
     extracted = target_root / "Dataset"
@@ -86,6 +98,8 @@ def prepare_c4censor(refresh: bool = False) -> Path:
 
 
 def safe_extract(tar: tarfile.TarFile, target: Path) -> None:
+    """Reject tar members that would escape the extraction target directory."""
+
     target_root = target.resolve()
     for member in tar.getmembers():
         member_target = (target / member.name).resolve()
@@ -95,6 +109,8 @@ def safe_extract(tar: tarfile.TarFile, target: Path) -> None:
 
 
 def load_c4censor_cases(limit_per_subclass: int, seed: int, refresh: bool) -> list[ImageCase]:
+    """Load deterministic C4Censor samples grouped by category and subclass."""
+
     root = prepare_c4censor(refresh=refresh)
     grouped: dict[tuple[str, str], list[Path]] = defaultdict(list)
     for path in root.rglob("*"):
@@ -127,6 +143,8 @@ def load_c4censor_cases(limit_per_subclass: int, seed: int, refresh: bool) -> li
 
 
 def read_hf_token(raw_token: str | None, token_file: str | None) -> str | None:
+    """Resolve HuggingFace token from CLI, file, or environment without printing it."""
+
     if raw_token:
         return raw_token.strip()
     if token_file:
@@ -138,6 +156,8 @@ def read_hf_token(raw_token: str | None, token_file: str | None) -> str | None:
 
 
 def extract_token(text: str) -> str | None:
+    """Extract the first token-like value from a text file."""
+
     for line in text.splitlines():
         stripped = line.strip().strip("\"'")
         if not stripped:
@@ -150,6 +170,8 @@ def extract_token(text: str) -> str | None:
 
 
 def unsafe_bench_metadata() -> dict:
+    """Fetch lightweight UnsafeBench metadata to report gated/access status."""
+
     try:
         request = urllib.request.Request(UNSAFEBENCH_META_API, headers={"User-Agent": "ContentReviewImageSafety/1.0"})
         with urllib.request.urlopen(request, timeout=30) as response:
@@ -159,6 +181,8 @@ def unsafe_bench_metadata() -> dict:
 
 
 def unsafe_bench_status(hf_token: str | None) -> dict:
+    """Return whether UnsafeBench can be evaluated in this environment."""
+
     meta = unsafe_bench_metadata()
     if meta.get("metadata_error"):
         return {"dataset": "UnsafeBench", "status": "metadata_error", "error": meta["metadata_error"]}
@@ -185,6 +209,8 @@ def unsafe_bench_status(hf_token: str | None) -> dict:
 
 
 def prepare_unsafebench(token: str, refresh: bool = False) -> Path:
+    """Download UnsafeBench parquet after DUA/token access is available."""
+
     target_root = DATA_ROOT / "unsafebench"
     parquet_path = target_root / "test-00000-of-00001.parquet"
     if refresh and parquet_path.exists():
@@ -214,6 +240,8 @@ def load_unsafebench_cases(
     token: str | None,
     refresh: bool,
 ) -> tuple[list[ImageCase], dict]:
+    """Load UnsafeBench images from parquet into local sample files."""
+
     status = unsafe_bench_status(token)
     if not token:
         return [], status
@@ -287,6 +315,8 @@ def load_unsafebench_cases(
 
 
 class PathLikeBytes:
+    """Minimal file-like wrapper so PIL can inspect HF image bytes."""
+
     def __init__(self, data: bytes) -> None:
         from io import BytesIO
 
@@ -303,6 +333,8 @@ class PathLikeBytes:
 
 
 def image_bytes_from_hf_image(value: object) -> bytes:
+    """Normalize common HuggingFace image cell formats into raw bytes."""
+
     if isinstance(value, dict):
         raw = value.get("bytes")
         if raw is not None:
@@ -322,6 +354,8 @@ def image_bytes_from_hf_image(value: object) -> bytes:
 
 
 def expected_passed(expected: str, action: str) -> bool:
+    """Return whether a service action satisfies benchmark expectation."""
+
     if expected == "allow":
         return action == "allow"
     if expected == "non_allow":
@@ -330,6 +364,8 @@ def expected_passed(expected: str, action: str) -> bool:
 
 
 def run_case(api_url: str, case: ImageCase, timeout: float, skip_ocr: bool) -> dict:
+    """Call image-audit-service for one benchmark image and return compact results."""
+
     data = case.path.read_bytes()
     payload = {
         "content_id": f"{case.dataset}_{case.category}_{case.subclass}_{case.path.stem}",
@@ -344,7 +380,7 @@ def run_case(api_url: str, case: ImageCase, timeout: float, skip_ocr: bool) -> d
         },
     }
     started = time.perf_counter()
-    response = requests.post(api_url, json=payload, timeout=timeout)
+    response = requests.post(api_url, params={"brief": "false"}, json=payload, timeout=timeout)
     elapsed_ms = (time.perf_counter() - started) * 1000
     response.raise_for_status()
     body = response.json()
@@ -368,6 +404,8 @@ def run_case(api_url: str, case: ImageCase, timeout: float, skip_ocr: bool) -> d
 
 
 def percentile(values: list[float], pct: float) -> float:
+    """Return a simple nearest-rank percentile from collected latencies."""
+
     if not values:
         return 0.0
     ordered = sorted(values)
@@ -376,6 +414,8 @@ def percentile(values: list[float], pct: float) -> float:
 
 
 def summarize(results: list[dict]) -> list[dict]:
+    """Aggregate per-sample results by dataset/category/subclass."""
+
     grouped: dict[tuple[str, str, str], list[dict]] = defaultdict(list)
     for item in results:
         grouped[(item["dataset"], item["category"], item["subclass"])].append(item)
@@ -416,6 +456,8 @@ def render_report(
     unsafebench_limit_per_category: int,
     skip_ocr: bool,
 ) -> str:
+    """Render a privacy-preserving Markdown report."""
+
     generated = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     overall_total = len(results)
     overall_passed = sum(1 for item in results if item["passed"])
@@ -515,6 +557,8 @@ def render_report(
 
 
 def main() -> None:
+    """CLI entrypoint for image safety benchmark reporting."""
+
     parser = argparse.ArgumentParser(description="Run image safety benchmark against image-audit-service.")
     parser.add_argument("--api-url", default="http://127.0.0.1:8020/v1/moderation/image")
     parser.add_argument("--limit-per-subclass", type=int, default=10)

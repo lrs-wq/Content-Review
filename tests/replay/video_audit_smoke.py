@@ -1,3 +1,5 @@
+"""Smoke tests for video-audit-service upload validation and moderation flow."""
+
 from __future__ import annotations
 
 import argparse
@@ -34,6 +36,7 @@ def post_video(api_url: str, video_path: Path, timeout: float = 180.0) -> tuple[
     """Upload one video to the running video-audit-service."""
 
     data = {
+        # Provide empty text fields so the smoke test exercises real no-audio/empty-text behavior.
         "content_id": video_path.stem,
         "user_id": "video_smoke",
         "scene": "video_smoke",
@@ -44,7 +47,7 @@ def post_video(api_url: str, video_path: Path, timeout: float = 180.0) -> tuple[
     }
     with video_path.open("rb") as stream:
         files = {"file": (video_path.name, stream, "video/mp4")}
-        response = httpx.post(api_url, data=data, files=files, timeout=timeout)
+        response = httpx.post(api_url, params={"brief": "false"}, data=data, files=files, timeout=timeout)
     return response.status_code, response.json()
 
 

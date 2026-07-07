@@ -1,3 +1,5 @@
+"""Download and initialize image moderation models before serving traffic."""
+
 from __future__ import annotations
 
 import argparse
@@ -10,6 +12,8 @@ from PIL import Image
 
 
 def resolve_model_name(model_name: str) -> str:
+    """Prefer local model directories while preserving remote HF identifiers."""
+
     path = Path(model_name)
     if path.is_absolute() or path.exists():
         return str(path.resolve())
@@ -20,6 +24,8 @@ def resolve_model_name(model_name: str) -> str:
 
 
 def prewarm_nsfw_model(model_name: str, device: int) -> None:
+    """Load Falconsai NSFW model and run one synthetic image through the pipeline."""
+
     os.environ.setdefault("HF_HUB_DISABLE_XET", "1")
     os.environ.setdefault("HF_HUB_ETAG_TIMEOUT", "30")
     os.environ.setdefault("HF_HUB_DOWNLOAD_TIMEOUT", "600")
@@ -51,6 +57,8 @@ def prewarm_nsfw_model(model_name: str, device: int) -> None:
 
 
 def prewarm_nudenet() -> None:
+    """Initialize NudeNet and run one temporary-image probe."""
+
     from nudenet import NudeDetector  # type: ignore
 
     started = time.perf_counter()
@@ -69,6 +77,8 @@ def prewarm_nudenet() -> None:
 
 
 def main() -> None:
+    """CLI entrypoint for local image model prewarming."""
+
     parser = argparse.ArgumentParser(description="Download and initialize image audit models.")
     parser.add_argument("--model-name", default="storage/models/falconsai-nsfw")
     parser.add_argument("--device", type=int, default=-1, help="-1 means CPU for transformers pipeline")

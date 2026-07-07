@@ -1,1 +1,1 @@
-
+"""Video audit Pydantic schemas."""

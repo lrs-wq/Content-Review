@@ -56,11 +56,21 @@ services:
       CONFIG_DIR: /app/configs
       PROJECT_ROOT: /app
       POLICY_VERSION: "2026.06.24"
+      HF_HUB_DISABLE_XET: "1"
+      HF_HUB_ETAG_TIMEOUT: "5"
+      HF_HUB_DOWNLOAD_TIMEOUT: "60"
+      # Public faster-whisper weights download more reliably from this mirror in China.
+      HF_ENDPOINT: "https://hf-mirror.com"
       IMAGE_AUDIT_URL: "http://image-audit-service:8020/v1/moderation/image/upload"
       TEXT_AUDIT_URL: "http://text-audit-service:8010/v1/moderation/text"
       VIDEO_AUDIT_MAX_DURATION_SECONDS: "60"
       VIDEO_AUDIT_FRAME_SAMPLE_FPS: "1"
       VIDEO_AUDIT_MAX_SAMPLED_FRAMES: "60"
+      VIDEO_AUDIT_SCENE_DETECT_ENABLED: "true"
+      VIDEO_AUDIT_SCENE_DETECT_THRESHOLD: "27"
+      VIDEO_AUDIT_SCENE_DETECT_MIN_SCENE_LEN: "15"
+      VIDEO_AUDIT_SCENE_DETECT_MAX_FRAMES: "8"
+      VIDEO_AUDIT_SCENE_DETECT_DEDUPE_SECONDS: "0.35"
       VIDEO_AUDIT_FRAME_SKIP_OCR: "true"
       VIDEO_AUDIT_STOP_ON_BLOCK: "false"
       VIDEO_AUDIT_SELECTIVE_OCR_ENABLED: "true"
@@ -70,6 +80,12 @@ services:
       VIDEO_AUDIT_SELECTIVE_OCR_MIN_INTERVAL_SECONDS: "2"
       VIDEO_AUDIT_SELECTIVE_OCR_TEXT_REGION_ENABLED: "true"
       VIDEO_AUDIT_SELECTIVE_OCR_RETRY_ON_QR_OR_RISK: "true"
+      # tiny/cpu/int8 keeps synchronous local ASR usable; switch to base/small after prewarming.
+      VIDEO_AUDIT_ENABLE_ASR: "true"
+      VIDEO_AUDIT_ASR_PROVIDER: "faster_whisper"
+      VIDEO_AUDIT_ASR_MODEL_NAME: "tiny"
+      VIDEO_AUDIT_ASR_DEVICE: "cpu"
+      VIDEO_AUDIT_ASR_COMPUTE_TYPE: "int8"
     ports:
       - "8030:8030"
     volumes:
@@ -78,3 +94,23 @@ services:
       - text-audit-service
       - image-audit-service
     command: uvicorn app.main:app --host 0.0.0.0 --port 8030
+
+  gateway-service:
+    build:
+      context: ./services/gateway
+    container_name: content-review-gateway
+    environment:
+      POLICY_VERSION: "2026.06.24"
+      GATEWAY_TEXT_AUDIT_URL: "http://text-audit-service:8010/v1/moderation/text"
+      GATEWAY_IMAGE_AUDIT_JSON_URL: "http://image-audit-service:8020/v1/moderation/image"
+      GATEWAY_IMAGE_AUDIT_UPLOAD_URL: "http://image-audit-service:8020/v1/moderation/image/upload"
+      GATEWAY_VIDEO_AUDIT_UPLOAD_URL: "http://video-audit-service:8030/v1/moderation/video/upload"
+      GATEWAY_REQUEST_TIMEOUT_SECONDS: "300"
+      GATEWAY_HEALTH_TIMEOUT_SECONDS: "2"
+    ports:
+      - "8040:8040"
+    depends_on:
+      - text-audit-service
+      - image-audit-service
+      - video-audit-service
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8040

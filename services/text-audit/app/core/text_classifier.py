@@ -1,3 +1,5 @@
+"""Small local text classifier used between rules and the gray-zone agent."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -11,6 +13,8 @@ from app.core.config import load_yaml
 
 @dataclass(frozen=True)
 class ClassifierResult:
+    """Normalized result from the local text classifier artifact."""
+
     enabled: bool
     label: str
     score: float
@@ -21,6 +25,8 @@ class ClassifierResult:
 
 
 class TextClassifier:
+    """Loads a joblib scikit-learn artifact and maps labels to moderation actions."""
+
     def __init__(self, thresholds_path: Path, repo_root: Path) -> None:
         thresholds = load_yaml(thresholds_path)
         text_thresholds = thresholds.get("text", {}) if isinstance(thresholds.get("text", {}), dict) else {}
@@ -50,6 +56,8 @@ class TextClassifier:
         return "disabled:config"
 
     def classify(self, text: str) -> ClassifierResult:
+        """Classify normalized text and convert the best label into an action."""
+
         if self._model is None:
             return ClassifierResult(
                 enabled=False,
@@ -89,6 +97,8 @@ class TextClassifier:
             )
 
     def _decision(self, label: str, score: float) -> tuple[str, str]:
+        """Apply per-label thresholds after the classifier chooses its top class."""
+
         if label == "safe":
             return "allow", "none"
         review_score = float(self.label_review_scores.get(label, self.review_score))
@@ -100,9 +110,13 @@ class TextClassifier:
 
     @staticmethod
     def _prepare_text(text: str) -> str:
+        """Remove context labels like [text] so the char model sees mostly user content."""
+
         return re.sub(r"\[[a-zA-Z_]+\]\s*", " ", text).strip()
 
     def _load(self) -> None:
+        """Load the classifier artifact, recording status instead of failing startup."""
+
         if not self.model_path.exists():
             self._load_error = f"model_missing:{self.model_path}"
             return
@@ -117,6 +131,8 @@ class TextClassifier:
 
     @staticmethod
     def _resolve_model_path(raw_path: str, repo_root: Path) -> Path:
+        """Resolve model paths relative to the repository root when needed."""
+
         if not raw_path:
             return repo_root / "storage" / "models" / "text-classifier" / "text_classifier.joblib"
         path = Path(raw_path)

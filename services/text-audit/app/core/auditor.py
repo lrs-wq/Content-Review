@@ -1,3 +1,5 @@
+"""Pipeline coordinator for text moderation."""
+
 from __future__ import annotations
 
 from datetime import datetime, timezone
@@ -20,9 +22,13 @@ from app.schemas.moderation import (
 
 
 class TextAuditor:
+    """Runs rule matching, small-model classification, context agent review, and fusion."""
+
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
         self.policy_version = settings.policy_version
+        # Rule engine stays first because deterministic high-confidence hits are cheap and
+        # explainable. Later semantic layers handle wording that is hard to enumerate.
         self.rules = RuleEngine(settings.term_paths, settings.allow_terms_path)
         self.semantic_model = SemanticModel(settings.model_name, settings.enable_model)
         self.text_classifier = TextClassifier(settings.thresholds_path, settings.repo_root)
@@ -43,11 +49,17 @@ class TextAuditor:
         return self.text_classifier.status
 
     def audit(self, payload: TextModerationRequest) -> TextModerationResponse:
+        """Moderate one text package and return a stable API response."""
+
+        # The context package is the key difference from plain keyword matching: title, parent
+        # comments, OCR, ASR, and custom business fields are folded into one bounded text window.
         context_package = self.context_builder.build(payload)
         scan = self.rules.scan(context_package.aggregate_text)
         semantic = self.semantic_model.infer(scan.normalized_text)
         classifier = self.text_classifier.classify(scan.normalized_text)
         preliminary = self.decider.decide(scan.hits, semantic, classifier)
+        # The lightweight agent only runs after the cheap layers and only when the case is gray or
+        # context-heavy. It is intentionally used as a precision layer, not as the main hot path.
         agent_result = self.small_agent.review(context_package, preliminary)
         decision = self.decider.apply_agent(preliminary, agent_result)
 
@@ -97,5 +109,7 @@ class TextAuditor:
 
     @staticmethod
     def _trace_id() -> str:
+        """Create a short trace id suitable for logs, UI output, and user reports."""
+
         now = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
         return f"tr_{now}_{uuid4().hex[:8]}"

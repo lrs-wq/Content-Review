@@ -1,3 +1,5 @@
+"""Configuration loader for video-audit-service."""
+
 from __future__ import annotations
 
 import os
@@ -9,6 +11,8 @@ import yaml
 
 
 def _repo_root() -> Path:
+    """Resolve the repository root from this service module location."""
+
     return Path(__file__).resolve().parents[4]
 
 
@@ -29,6 +33,11 @@ class Settings:
     allowed_extensions: tuple[str, ...]
     frame_sample_fps: float
     max_sampled_frames: int
+    scene_detect_enabled: bool
+    scene_detect_threshold: float
+    scene_detect_min_scene_len: int
+    scene_detect_max_scene_frames: int
+    scene_detect_dedupe_seconds: float
     frame_skip_ocr: bool
     stop_on_block: bool
     selective_ocr_enabled: bool
@@ -94,6 +103,9 @@ def get_settings() -> Settings:
     selective_ocr_config = (
         video_config.get("selective_ocr", {}) if isinstance(video_config.get("selective_ocr", {}), dict) else {}
     )
+    scene_detect_config = (
+        video_config.get("scene_detect", {}) if isinstance(video_config.get("scene_detect", {}), dict) else {}
+    )
     asr_config = video_config.get("asr", {}) if isinstance(video_config.get("asr", {}), dict) else {}
 
     return Settings(
@@ -111,6 +123,34 @@ def get_settings() -> Settings:
         ),
         frame_sample_fps=float(os.getenv("VIDEO_AUDIT_FRAME_SAMPLE_FPS", str(video_config.get("frame_sample_fps", 1.0)))),
         max_sampled_frames=int(os.getenv("VIDEO_AUDIT_MAX_SAMPLED_FRAMES", str(video_config.get("max_sampled_frames", 60)))),
+        scene_detect_enabled=_env_bool(
+            "VIDEO_AUDIT_SCENE_DETECT_ENABLED",
+            bool(scene_detect_config.get("enabled", True)),
+        ),
+        scene_detect_threshold=float(
+            os.getenv(
+                "VIDEO_AUDIT_SCENE_DETECT_THRESHOLD",
+                str(scene_detect_config.get("threshold", 27.0)),
+            )
+        ),
+        scene_detect_min_scene_len=int(
+            os.getenv(
+                "VIDEO_AUDIT_SCENE_DETECT_MIN_SCENE_LEN",
+                str(scene_detect_config.get("min_scene_len", 15)),
+            )
+        ),
+        scene_detect_max_scene_frames=int(
+            os.getenv(
+                "VIDEO_AUDIT_SCENE_DETECT_MAX_FRAMES",
+                str(scene_detect_config.get("max_scene_frames", 8)),
+            )
+        ),
+        scene_detect_dedupe_seconds=float(
+            os.getenv(
+                "VIDEO_AUDIT_SCENE_DETECT_DEDUPE_SECONDS",
+                str(scene_detect_config.get("dedupe_seconds", 0.35)),
+            )
+        ),
         frame_skip_ocr=_env_bool("VIDEO_AUDIT_FRAME_SKIP_OCR", bool(video_config.get("frame_skip_ocr", True))),
         stop_on_block=_env_bool("VIDEO_AUDIT_STOP_ON_BLOCK", bool(video_config.get("stop_on_block", False))),
         selective_ocr_enabled=_env_bool(
@@ -175,7 +215,7 @@ def get_settings() -> Settings:
         ffprobe_path=os.getenv("VIDEO_AUDIT_FFPROBE_PATH", str(video_config.get("ffprobe_path", "ffprobe"))),
         asr_enabled=_env_bool("VIDEO_AUDIT_ENABLE_ASR", bool(asr_config.get("enabled", False))),
         asr_provider=os.getenv("VIDEO_AUDIT_ASR_PROVIDER", str(asr_config.get("provider", "faster_whisper"))),
-        asr_model_name=os.getenv("VIDEO_AUDIT_ASR_MODEL_NAME", str(asr_config.get("model_name", "small"))),
+        asr_model_name=os.getenv("VIDEO_AUDIT_ASR_MODEL_NAME", str(asr_config.get("model_name", "tiny"))),
         asr_device=os.getenv("VIDEO_AUDIT_ASR_DEVICE", str(asr_config.get("device", "cpu"))),
         asr_compute_type=os.getenv("VIDEO_AUDIT_ASR_COMPUTE_TYPE", str(asr_config.get("compute_type", "int8"))),
     )

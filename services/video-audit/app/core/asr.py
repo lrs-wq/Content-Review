@@ -1,3 +1,5 @@
+"""Speech-to-text adapter used by video-audit-service."""
+
 from __future__ import annotations
 
 import time
@@ -18,8 +20,9 @@ class AsrResult:
 class AsrEngine:
     """Optional ASR adapter for video speech text.
 
-    The first deployment keeps local ASR disabled by default. Upstream systems can pass
-    provided_asr_text immediately; faster-whisper can be enabled later without changing the API.
+    Local ASR is enabled by configuration in the current deployment. Upstream systems can still
+    pass provided_asr_text; when they do, the service skips local transcription and directly
+    moderates the provided transcript.
     """
 
     def __init__(self, settings: Settings) -> None:
@@ -37,7 +40,7 @@ class AsrEngine:
             return f"error:{self._load_error}"
         return f"configured:{self.settings.asr_provider}:{self.settings.asr_model_name}"
 
-    def transcribe(self, video_path: Path, provided_asr_text: str | None) -> AsrResult:
+    def transcribe(self, video_path: Path, provided_asr_text: str | None, has_audio: bool = True) -> AsrResult:
         """Return provided transcript, skip ASR, or run the configured local ASR model."""
 
         started = time.perf_counter()
@@ -51,6 +54,17 @@ class AsrEngine:
                     status="provided",
                     provider="provided",
                     text=text,
+                    elapsed_ms=round((time.perf_counter() - started) * 1000, 3),
+                )
+            )
+        if not has_audio:
+            # Silent videos and video-only files should not pay model load cost or be treated as
+            # ASR failures. Frame OCR and related text still flow through text moderation later.
+            return AsrResult(
+                payload=AsrPayload(
+                    used=False,
+                    status="skipped:no_audio_stream",
+                    provider=self.settings.asr_provider,
                     elapsed_ms=round((time.perf_counter() - started) * 1000, 3),
                 )
             )
@@ -76,6 +90,8 @@ class AsrEngine:
             )
         try:
             model = self._load_model()
+            # faster-whisper can transcribe directly from the media container path. VAD reduces
+            # useless segments for videos with long silence or background music.
             segments, _ = model.transcribe(str(video_path), vad_filter=True)
             segment_payloads: list[AsrSegmentPayload] = []
             texts: list[str] = []
@@ -120,6 +136,8 @@ class AsrEngine:
             return self._model
         from faster_whisper import WhisperModel  # type: ignore
 
+        # The model is intentionally loaded on first real audio request. Startup stays quick, and
+        # operators can still prewarm weights with a separate smoke test when needed.
         self._model = WhisperModel(
             self.settings.asr_model_name,
             device=self.settings.asr_device,

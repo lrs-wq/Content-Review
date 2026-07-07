@@ -1,3 +1,5 @@
+"""Generate a text moderation report from public lexicons and COLDataset samples."""
+
 from __future__ import annotations
 
 import csv
@@ -27,6 +29,8 @@ from app.main import app  # noqa: E402
 
 @dataclass(frozen=True)
 class Source:
+    """One public sample source used by the text-audit regression report."""
+
     name: str
     url: str
     parser: str
@@ -96,6 +100,8 @@ SOURCES = [
 
 
 def download(source: Source) -> Path:
+    """Download or reuse a cached raw source file."""
+
     RAW_DIR.mkdir(parents=True, exist_ok=True)
     suffix = ".csv" if source.url.endswith(".csv") else ".txt"
     path = RAW_DIR / f"{source.name}{suffix}"
@@ -109,6 +115,8 @@ def download(source: Source) -> Path:
 
 
 def parse_txt_terms(path: Path) -> list[str]:
+    """Parse a plain text dictionary into de-duplicated terms."""
+
     text = path.read_text(encoding="utf-8-sig", errors="ignore")
     terms: list[str] = []
     for line in text.splitlines():
@@ -120,6 +128,8 @@ def parse_txt_terms(path: Path) -> list[str]:
 
 
 def parse_cold(path: Path, wanted_label: str) -> list[str]:
+    """Extract safe/offensive rows from COLDataset by label."""
+
     rows: list[str] = []
     with path.open("r", encoding="utf-8-sig", newline="") as stream:
         reader = csv.DictReader(stream)
@@ -132,6 +142,8 @@ def parse_cold(path: Path, wanted_label: str) -> list[str]:
 
 
 def parse_source(source: Source, path: Path) -> list[str]:
+    """Dispatch source-specific parsing logic."""
+
     if source.parser == "txt_terms":
         return parse_txt_terms(path)
     if source.parser == "cold_offensive":
@@ -142,6 +154,8 @@ def parse_source(source: Source, path: Path) -> list[str]:
 
 
 def dedupe(items: Iterable[str]) -> list[str]:
+    """Preserve order while removing repeated sample strings."""
+
     seen: set[str] = set()
     result: list[str] = []
     for item in items:
@@ -154,6 +168,8 @@ def dedupe(items: Iterable[str]) -> list[str]:
 
 
 def sample(items: list[str], limit: int) -> list[str]:
+    """Take a deterministic sample for reproducible reports."""
+
     rng = random.Random(20260624)
     if len(items) <= limit:
         return list(items)
@@ -161,6 +177,8 @@ def sample(items: list[str], limit: int) -> list[str]:
 
 
 def mask_text(text: str) -> str:
+    """Mask full sensitive text while keeping enough preview for debugging."""
+
     compact = " ".join(text.split())
     if len(compact) <= 4:
         return compact[0] + "*" * max(len(compact) - 1, 0)
@@ -168,10 +186,14 @@ def mask_text(text: str) -> str:
 
 
 def text_hash(text: str) -> str:
+    """Hash text so reports can identify samples without exposing full content."""
+
     return hashlib.sha256(text.encode("utf-8")).hexdigest()[:12]
 
 
 def percentile(values: list[float], pct: float) -> float:
+    """Return a simple nearest-rank percentile."""
+
     if not values:
         return 0.0
     ordered = sorted(values)
@@ -180,6 +202,8 @@ def percentile(values: list[float], pct: float) -> float:
 
 
 def expected_passed(expected: str, action: str) -> bool:
+    """Return whether a service action satisfies source expectation."""
+
     if expected == "allow":
         return action == "allow"
     if expected == "non_allow":
@@ -188,6 +212,8 @@ def expected_passed(expected: str, action: str) -> bool:
 
 
 def run_case(client: TestClient, source: Source, index: int, text: str) -> dict:
+    """Call text-audit-service through TestClient for one sample."""
+
     payload = {
         "content_id": f"{source.name}_{index}",
         "user_id": "lexicon_report",
@@ -196,7 +222,7 @@ def run_case(client: TestClient, source: Source, index: int, text: str) -> dict:
         "context": {},
     }
     started = time.perf_counter()
-    response = client.post("/v1/moderation/text", json=payload)
+    response = client.post("/v1/moderation/text", params={"brief": "false"}, json=payload)
     elapsed_ms = (time.perf_counter() - started) * 1000
     response.raise_for_status()
     body = response.json()
@@ -222,6 +248,8 @@ def run_case(client: TestClient, source: Source, index: int, text: str) -> dict:
 
 
 def summarize(source: Source, results: list[dict]) -> dict:
+    """Aggregate action, label, model, agent, and latency metrics for one source."""
+
     total = len(results)
     action_counts = count_by(results, "action")
     label_counts: dict[str, int] = {}
@@ -253,6 +281,8 @@ def summarize(source: Source, results: list[dict]) -> dict:
 
 
 def count_by(results: list[dict], key: str) -> dict[str, int]:
+    """Count result dictionaries by one key."""
+
     counts: dict[str, int] = {}
     for item in results:
         value = str(item.get(key, ""))
@@ -261,6 +291,8 @@ def count_by(results: list[dict], key: str) -> dict[str, int]:
 
 
 def render_report(summaries: list[dict], failures: list[dict], skipped: list[dict], json_path: Path) -> str:
+    """Render a Markdown report that avoids exposing full sensitive samples."""
+
     generated = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     lines = [
         "# 文本审核词库测试报告",
@@ -344,6 +376,8 @@ def render_report(summaries: list[dict], failures: list[dict], skipped: list[dic
 
 
 def main() -> None:
+    """CLI entrypoint for the public lexicon regression report."""
+
     REPORT_DIR.mkdir(parents=True, exist_ok=True)
     client = TestClient(app)
     all_results: list[dict] = []

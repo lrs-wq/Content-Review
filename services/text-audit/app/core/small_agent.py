@@ -1,3 +1,5 @@
+"""Heuristic small-agent layer for gray-zone or context-heavy text decisions."""
+
 from __future__ import annotations
 
 import re
@@ -10,9 +12,12 @@ from app.core.decision import Decision
 
 
 VIOLENCE_RE = re.compile(
+    # Broad verb-object violence hint. It deliberately avoids hardcoding every possible target
+    # noun so variants like "杀猫/杀狗/杀兔" still trigger semantic review.
     r"(杀|宰|弄死|打死|毒死|捅|砍|烧死|灭了|干掉)(?:了|掉)?[\w\u4e00-\u9fff]{0,8}"
 )
 DIRECT_THREAT_RE = re.compile(
+    # Direct threats are scored higher than general violent wording because they imply intent.
     r"("
     r"(我要|我想|准备|去|一起|叫人)?[\w\u4e00-\u9fff]{0,6}"
     r"(杀|宰|弄死|打死|毒死|捅|砍|烧死|灭了|干掉)"
@@ -29,6 +34,8 @@ CONTEXT_RELIEF_RE = re.compile(r"(小说|电影|游戏|剧情|新闻|引用|反�
 
 @dataclass(frozen=True)
 class AgentResult:
+    """Normalized result from the gray-zone agent layer."""
+
     used: bool
     trigger_reason: list[str]
     risk_level: str
@@ -40,6 +47,8 @@ class AgentResult:
 
 
 class SmallAgent:
+    """A lightweight context judge used only after cheap filters find a gray case."""
+
     def __init__(self, thresholds_path: Path) -> None:
         thresholds = load_yaml(thresholds_path)
         text_thresholds = thresholds.get("text", {}) if isinstance(thresholds.get("text", {}), dict) else {}
@@ -56,6 +65,8 @@ class SmallAgent:
         return f"{self.provider}:{'enabled' if self.enabled else 'disabled'}"
 
     def review(self, package: ContextPackage, preliminary: Decision) -> AgentResult:
+        """Review a context package when score/context triggers warrant deeper inspection."""
+
         trigger_reason = self._trigger_reason(package, preliminary)
         if not self.enabled or not trigger_reason:
             return AgentResult(
@@ -78,6 +89,8 @@ class SmallAgent:
         risk_level = "none"
         reason = "no additional context risk found"
 
+        # Run the more specific threat pattern before the broad violence pattern so explicit
+        # intent receives stronger action and evidence.
         violence = self._find(VIOLENCE_RE, text)
         direct_threat = self._find(DIRECT_THREAT_RE, text)
         ad = self._find(AD_RE, text)
@@ -126,6 +139,8 @@ class SmallAgent:
         )
 
     def _trigger_reason(self, package: ContextPackage, preliminary: Decision) -> list[str]:
+        """Decide whether the agent should run for this request."""
+
         if preliminary.action == "block":
             return []
 
@@ -151,19 +166,27 @@ class SmallAgent:
 
     @staticmethod
     def _has_suspicious_hint(text: str) -> bool:
+        """Detect hints that deserve agent review even when rules did not fire."""
+
         return any(pattern.search(text) for pattern in (VIOLENCE_RE, AD_RE, FRAUD_RE))
 
     @staticmethod
     def _find(pattern: re.Pattern[str], text: str) -> str | None:
+        """Return the first matched evidence span for compact API output."""
+
         match = pattern.search(text)
         return match.group(0) if match else None
 
     @staticmethod
     def _max_risk(current: str, incoming: str) -> str:
+        """Return the higher risk level."""
+
         rank = {"none": 0, "low": 1, "medium": 2, "high": 3}
         return incoming if rank[incoming] > rank[current] else current
 
     @staticmethod
     def _max_action(current: str, incoming: str) -> str:
+        """Return the stricter action."""
+
         rank = {"allow": 0, "review": 1, "block": 2}
         return incoming if rank[incoming] > rank[current] else current

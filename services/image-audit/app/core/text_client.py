@@ -1,3 +1,5 @@
+"""HTTP client for sending OCR text to text-audit-service."""
+
 from __future__ import annotations
 
 import httpx
@@ -7,6 +9,8 @@ from app.schemas.moderation import ImageModerationRequest, TextReviewPayload
 
 
 class TextAuditClient:
+    """Wraps the text service so image moderation can reuse text policy and context logic."""
+
     def __init__(self, settings: Settings) -> None:
         self.url = settings.text_audit_url
         self.timeout = settings.text_audit_timeout_seconds
@@ -16,10 +20,14 @@ class TextAuditClient:
         return f"configured:{self.url}"
 
     def review_ocr_text(self, payload: ImageModerationRequest, ocr_text: str) -> TextReviewPayload:
+        """Moderate OCR text as a labeled child item of the image request."""
+
         text = ocr_text.strip()
         if not text:
             return TextReviewPayload(used=False, status="skipped:empty_ocr_text")
 
+        # The source fields preserve provenance so manual review can tell OCR-derived text from
+        # user-entered captions or comments.
         request_body = {
             "content_id": f"{payload.content_id}#ocr",
             "user_id": payload.user_id,
@@ -34,7 +42,7 @@ class TextAuditClient:
         }
         try:
             with httpx.Client(timeout=self.timeout) as client:
-                response = client.post(self.url, json=request_body)
+                response = client.post(self.url, params={"brief": "false"}, json=request_body)
                 response.raise_for_status()
                 body = response.json()
             return TextReviewPayload(

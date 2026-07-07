@@ -1,3 +1,5 @@
+"""Build bounded moderation context from text, OCR, ASR, and business metadata."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -9,6 +11,8 @@ from app.schemas.moderation import TextModerationRequest
 
 @dataclass(frozen=True)
 class ContextPackage:
+    """Normalized text bundle passed through all text moderation layers."""
+
     scene: str
     primary_text: str
     aggregate_text: str
@@ -17,10 +21,14 @@ class ContextPackage:
 
 
 class ContextBuilder:
+    """Collects all relevant context fields while keeping input length predictable."""
+
     def __init__(self, max_chars: int = 3000) -> None:
         self.max_chars = max_chars
 
     def build(self, payload: TextModerationRequest) -> ContextPackage:
+        """Return the primary text plus a labeled aggregate context string."""
+
         fields: dict[str, str | list[str]] = {
             "text": payload.text,
         }
@@ -32,6 +40,8 @@ class ContextBuilder:
         if payload.video_transcript:
             fields["video_transcript"] = payload.video_transcript
 
+        # Custom context lets callers pass parent comments, titles, OCR snippets, user history, or
+        # other business hints without changing the public schema for every new source.
         self._copy_context_fields(payload.context, fields)
 
         aggregate_parts = self._flatten_fields(fields)
@@ -49,6 +59,8 @@ class ContextBuilder:
         )
 
     def _copy_context_fields(self, context: dict[str, Any], fields: dict[str, str | list[str]]) -> None:
+        """Copy only non-empty string/list context fields into the aggregate package."""
+
         for key, value in context.items():
             if value is None:
                 continue
@@ -61,6 +73,8 @@ class ContextBuilder:
 
     @staticmethod
     def _flatten_fields(fields: dict[str, str | list[str]]) -> list[str]:
+        """Render labeled blocks so downstream evidence can keep source boundaries."""
+
         parts: list[str] = []
         for key, value in fields.items():
             if isinstance(value, list):
@@ -73,5 +87,6 @@ class ContextBuilder:
 
 
 def normalized_context_text(package: ContextPackage) -> str:
-    return normalize_text(package.aggregate_text)
+    """Return a normalized string suitable for regex/heuristic context checks."""
 
+    return normalize_text(package.aggregate_text)

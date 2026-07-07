@@ -1,3 +1,5 @@
+"""Optional multimodal safety review layer for gray-zone image decisions."""
+
 from __future__ import annotations
 
 import base64
@@ -19,6 +21,8 @@ from app.schemas.moderation import DetectionPayload, ImageModerationRequest
 
 @dataclass(frozen=True)
 class VisionSafetyResult:
+    """Normalized multimodal review result merged into image detections."""
+
     used: bool
     status: str
     scores: dict[str, float]
@@ -28,6 +32,8 @@ class VisionSafetyResult:
 
 @dataclass(frozen=True)
 class SafetyVerdict:
+    """Provider-agnostic safety verdict for one policy dimension."""
+
     label: str
     score: float
     action: str
@@ -36,7 +42,11 @@ class SafetyVerdict:
 
 
 class ShieldGemma2LocalProvider:
+    """Local ShieldGemma2 image classifier provider."""
+
     policies = (
+        # Each policy is asked independently so one unsafe dimension can be surfaced as evidence
+        # without relying on broad natural-language parsing.
         ("vision_sexual", "No sexually explicit or nude content."),
         ("vision_violence_gore", "No graphic violence, gore, blood, terrorism, war crimes, or severe injury."),
         ("vision_dangerous", "No dangerous content, weapons misuse, illegal activity, or instructions that enable harm."),
@@ -65,6 +75,8 @@ class ShieldGemma2LocalProvider:
         return f"configured:{self.model_name}:{mode}"
 
     def review(self, image: Image.Image, _: ImageModerationRequest, __: str) -> list[SafetyVerdict]:
+        """Run the local model against all configured policy prompts."""
+
         loaded = self._load()
         if not loaded:
             return []
@@ -92,6 +104,8 @@ class ShieldGemma2LocalProvider:
         return verdicts
 
     def _load(self) -> tuple[Any, Any, Any] | None:
+        """Load ShieldGemma2 lazily and avoid repeated expensive failures."""
+
         if self._processor is not None and self._model is not None:
             import torch  # type: ignore
 
@@ -109,6 +123,8 @@ class ShieldGemma2LocalProvider:
             if self.device == "cuda" and not cuda_available:
                 self._load_error = "cuda_not_available"
                 return None
+            # Local multimodal safety is expensive on CPU. The default requires CUDA unless the
+            # operator explicitly allows CPU inference for offline experiments.
             if self.device in {"cpu", "auto"} and not cuda_available and not self.allow_cpu:
                 self._load_error = "cpu_inference_disabled"
                 return None
@@ -136,6 +152,8 @@ class ShieldGemma2LocalProvider:
             return None
 
     def _to_verdict(self, label: str, score: float, evidence: str) -> SafetyVerdict:
+        """Map provider score into the common review/block action space."""
+
         return SafetyVerdict(
             label=label,
             score=max(0.0, min(1.0, score)),
@@ -146,6 +164,8 @@ class ShieldGemma2LocalProvider:
 
 
 class OpenAICompatibleVisionProvider:
+    """Remote multimodal safety provider using an OpenAI-compatible chat API."""
+
     def __init__(self, settings: Settings) -> None:
         self.provider = settings.vision_safety_provider
         self.model_name = settings.vision_safety_model_name
@@ -166,6 +186,8 @@ class OpenAICompatibleVisionProvider:
         return f"configured:{self.provider}:{self.model_name}"
 
     def review(self, image: Image.Image, payload: ImageModerationRequest, ocr_text: str) -> list[SafetyVerdict]:
+        """Send image plus context to a remote safety model and parse a single verdict."""
+
         if not self.endpoint_url:
             return []
         body = {
@@ -202,6 +224,8 @@ class OpenAICompatibleVisionProvider:
             return []
 
     def _prompt(self, payload: ImageModerationRequest, ocr_text: str) -> str:
+        """Build a compact safety prompt that includes business and OCR context."""
+
         context = {
             "scene": payload.scene,
             "related_text": payload.related_text or "",
@@ -218,6 +242,8 @@ class OpenAICompatibleVisionProvider:
         )
 
     def _parse_content(self, content: str) -> SafetyVerdict | None:
+        """Parse strict JSON when possible, falling back to conservative unsafe keywords."""
+
         match = re.search(r"\{.*\}", content, flags=re.DOTALL)
         if not match:
             lowered = content.lower()
@@ -244,6 +270,8 @@ class OpenAICompatibleVisionProvider:
 
     @staticmethod
     def _image_data_url(image: Image.Image) -> str:
+        """Encode the image as a JPEG data URL for chat-completion style APIs."""
+
         buffer = io.BytesIO()
         image.convert("RGB").save(buffer, format="JPEG", quality=88)
         encoded = base64.b64encode(buffer.getvalue()).decode("ascii")
@@ -251,6 +279,8 @@ class OpenAICompatibleVisionProvider:
 
 
 class VisionSafetyAgent:
+    """Routes only gray-zone or explicitly forced images to multimodal safety review."""
+
     endpoint_providers = {"openai_compatible", "llama_guard4_openai", "shieldgemma2_openai"}
 
     def __init__(self, settings: Settings) -> None:
@@ -286,6 +316,8 @@ class VisionSafetyAgent:
         visual_result: VisualResult,
         ocr_text: str,
     ) -> VisionSafetyResult:
+        """Return multimodal safety detections, or a skipped/unavailable status."""
+
         started = time.perf_counter()
         if not self.enabled:
             return self._empty("disabled", started)
@@ -296,6 +328,8 @@ class VisionSafetyAgent:
             return self._empty(f"skipped:{reason}", started)
         verdicts = self.provider.review(image, payload, ocr_text)
         if not verdicts and self.review_on_unavailable and self._provider_unavailable():
+            # When the fast visual layer already decided the image is gray but the second-opinion
+            # provider is unavailable, route to manual review rather than silently allowing.
             verdicts = [
                 SafetyVerdict(
                     label="vision_safety_unavailable",
@@ -326,6 +360,8 @@ class VisionSafetyAgent:
         )
 
     def _should_review(self, payload: ImageModerationRequest, visual_result: VisualResult) -> tuple[bool, str]:
+        """Evaluate trigger_mode=all/never/gray/risk plus manual force context."""
+
         if payload.context.get("force_vision_safety") is True:
             return True, "forced_by_context"
         mode = self.trigger_mode.lower()
@@ -345,6 +381,8 @@ class VisionSafetyAgent:
         return False, f"unknown_trigger:{mode}"
 
     def _provider_unavailable(self) -> bool:
+        """Return whether the configured provider cannot currently produce verdicts."""
+
         if self.provider is None:
             return True
         status = self.provider.status
@@ -352,6 +390,8 @@ class VisionSafetyAgent:
 
     @staticmethod
     def _empty(status: str, started: float) -> VisionSafetyResult:
+        """Build a skipped result with consistent timing and score shape."""
+
         return VisionSafetyResult(
             used=False,
             status=status,

@@ -1,3 +1,5 @@
+"""Image loading and validation utilities."""
+
 from __future__ import annotations
 
 import base64
@@ -14,6 +16,7 @@ from app.schemas.moderation import ImageMetadata, ImageModerationRequest
 
 SUPPORTED_FORMATS = {"JPEG", "PNG", "WEBP", "BMP"}
 FORMAT_TO_MIME = {
+    # Pillow format names are normalized to MIME strings for the API response.
     "JPEG": "image/jpeg",
     "PNG": "image/png",
     "WEBP": "image/webp",
@@ -23,20 +26,28 @@ FORMAT_TO_MIME = {
 
 @dataclass(frozen=True)
 class LoadedImage:
+    """Decoded image plus raw bytes and immutable metadata."""
+
     bytes_data: bytes
     pil_image: Image.Image
     metadata: ImageMetadata
 
 
 class ImageLoadError(ValueError):
+    """Raised when an upload cannot be safely decoded or accepted."""
+
     pass
 
 
 class ImageLoader:
+    """Reads image bytes from upload/base64/URL and validates limits before model work."""
+
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
 
     def load(self, payload: ImageModerationRequest) -> LoadedImage:
+        """Decode and validate one image request."""
+
         raw = self._read_bytes(payload)
         if len(raw) > self.settings.max_image_bytes:
             raise ImageLoadError(f"image_too_large:{len(raw)}>{self.settings.max_image_bytes}")
@@ -55,6 +66,7 @@ class ImageLoader:
                 if width * height > self.settings.max_image_pixels:
                     raise ImageLoadError(f"image_pixels_too_large:{width * height}>{self.settings.max_image_pixels}")
 
+                # Convert once so downstream OpenCV, PIL, and model pipelines see a stable format.
                 converted = image.convert("RGB")
                 metadata = ImageMetadata(
                     width=width,
@@ -70,6 +82,8 @@ class ImageLoader:
             raise ImageLoadError("image_decode_failed") from exc
 
     def _read_bytes(self, payload: ImageModerationRequest) -> bytes:
+        """Choose the first available image source from the request payload."""
+
         if payload.image_bytes:
             return payload.image_bytes
         if payload.image_base64:
@@ -80,6 +94,8 @@ class ImageLoader:
 
     @staticmethod
     def _decode_base64(value: str) -> bytes:
+        """Decode raw base64 or a data URL payload."""
+
         source = value.strip()
         if "," in source and source.lower().startswith("data:"):
             source = source.split(",", 1)[1]
@@ -89,6 +105,8 @@ class ImageLoader:
             raise ImageLoadError("invalid_image_base64") from exc
 
     def _download(self, url: str) -> bytes:
+        """Download a remote image while respecting the configured byte limit."""
+
         request = urllib.request.Request(url, headers={"User-Agent": "ContentReviewImageAudit/1.0"})
         with urllib.request.urlopen(request, timeout=10) as response:
             content_length = response.headers.get("Content-Length")

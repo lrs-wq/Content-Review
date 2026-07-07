@@ -1,13 +1,17 @@
+"""HTTP routes for image moderation, multipart upload, and health checks."""
+
 from __future__ import annotations
 
 import json
 from functools import lru_cache
 
-from fastapi import APIRouter, File, Form, UploadFile
+from fastapi import APIRouter, File, Form, Query, UploadFile
 
 from app.core.auditor import ImageAuditor
+from app.core.brief import to_brief_response
 from app.core.config import get_settings
 from app.schemas.moderation import (
+    BriefModerationResponse,
     HealthResponse,
     ImageModerationRequest,
     ImageModerationResponse,
@@ -19,11 +23,15 @@ router = APIRouter()
 
 @lru_cache(maxsize=1)
 def get_auditor() -> ImageAuditor:
+    """Reuse the auditor so OCR/model objects are cached across requests."""
+
     return ImageAuditor(get_settings())
 
 
 @router.get("/health", response_model=HealthResponse)
 def health() -> HealthResponse:
+    """Expose model/provider status for readiness checks and the web tester."""
+
     auditor = get_auditor()
     return HealthResponse(
         status="ok",
@@ -36,12 +44,21 @@ def health() -> HealthResponse:
     )
 
 
-@router.post("/v1/moderation/image", response_model=ImageModerationResponse)
-def moderate_image(payload: ImageModerationRequest) -> ImageModerationResponse:
-    return get_auditor().audit(payload)
+@router.post("/v1/moderation/image", response_model=ImageModerationResponse | BriefModerationResponse)
+def moderate_image(
+    payload: ImageModerationRequest,
+    brief: bool | None = Query(default=None),
+) -> ImageModerationResponse | BriefModerationResponse:
+    """Moderate a JSON image request using base64 or URL input."""
+
+    response = get_auditor().audit(payload)
+    use_brief = payload.brief if brief is None else brief
+    if use_brief:
+        return to_brief_response(response)
+    return response
 
 
-@router.post("/v1/moderation/image/upload", response_model=ImageModerationResponse)
+@router.post("/v1/moderation/image/upload", response_model=ImageModerationResponse | BriefModerationResponse)
 async def moderate_image_upload(
     content_id: str = Form(...),
     user_id: str = Form(...),
@@ -50,15 +67,21 @@ async def moderate_image_upload(
     provided_ocr_text: str | None = Form(None),
     skip_ocr: bool = Form(False),
     context: str | None = Form(None),
+    brief: bool = Query(True),
     file: UploadFile = File(...),
-) -> ImageModerationResponse:
+) -> ImageModerationResponse | BriefModerationResponse:
+    """Accept multipart image upload and convert it into the shared request schema."""
+
     context_payload = {}
     if context:
+        # Invalid context is ignored here for backwards compatibility with early manual tests; the
+        # JSON API path still benefits from Pydantic validation.
         parsed_context = json.loads(context)
         if isinstance(parsed_context, dict):
             context_payload = parsed_context
 
     payload = ImageModerationRequest(
+        # Upload bytes are stored on the model but excluded from the serialized response schema.
         content_id=content_id,
         user_id=user_id,
         scene=scene,
@@ -69,5 +92,9 @@ async def moderate_image_upload(
         image_mime=file.content_type,
         image_filename=file.filename,
         context=context_payload,
+        brief=brief,
     )
-    return get_auditor().audit(payload)
+    response = get_auditor().audit(payload)
+    if brief:
+        return to_brief_response(response)
+    return response

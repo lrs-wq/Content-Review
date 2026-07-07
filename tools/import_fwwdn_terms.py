@@ -1,3 +1,5 @@
+"""Import selected fwwdn/sensitive-stop-words dictionaries into project CSV rules."""
+
 from __future__ import annotations
 
 import argparse
@@ -85,11 +87,15 @@ SOURCES = (
 
 
 def term_key(term: str) -> str:
+    """Build a compact key for duplicate detection across source dictionaries."""
+
     normalized = unicodedata.normalize("NFKC", term or "").strip().lower()
     return "".join(char for char in normalized if char.isalnum())
 
 
 def download(source: Source, refresh: bool) -> Path:
+    """Download one source dictionary unless a cached copy can be reused."""
+
     RAW_DIR.mkdir(parents=True, exist_ok=True)
     path = RAW_DIR / source.filename
     if path.exists() and path.stat().st_size > 0 and not refresh:
@@ -102,6 +108,8 @@ def download(source: Source, refresh: bool) -> Path:
 
 
 def parse_terms(path: Path) -> list[str]:
+    """Split a raw dictionary text file into unique terms."""
+
     text = path.read_text(encoding="utf-8-sig", errors="ignore")
     terms: list[str] = []
     seen: set[str] = set()
@@ -120,6 +128,8 @@ def parse_terms(path: Path) -> list[str]:
 
 
 def load_existing_terms(paths: tuple[Path, ...]) -> set[str]:
+    """Load existing base terms so imported fwwdn entries do not duplicate them."""
+
     terms: set[str] = set()
     for path in paths:
         if not path.exists():
@@ -133,6 +143,8 @@ def load_existing_terms(paths: tuple[Path, ...]) -> set[str]:
 
 
 def build_rows(refresh: bool) -> tuple[list[dict[str, str]], list[dict[str, int | str]]]:
+    """Convert all configured sources into rows for configs/fwwdn_terms.csv."""
+
     seen = load_existing_terms(BASE_TERM_PATHS)
     rows: list[dict[str, str]] = []
     summary: list[dict[str, int | str]] = []
@@ -176,6 +188,8 @@ def build_rows(refresh: bool) -> tuple[list[dict[str, str]], list[dict[str, int 
 
 
 def write_terms(rows: list[dict[str, str]]) -> None:
+    """Write normalized fwwdn rows to the configured CSV dictionary."""
+
     CONFIG_DIR.mkdir(parents=True, exist_ok=True)
     fieldnames = ["term", "category", "risk_level", "match_type", "action", "enabled", "notes"]
     with TARGET_PATH.open("w", encoding="utf-8", newline="") as stream:
@@ -185,6 +199,8 @@ def write_terms(rows: list[dict[str, str]]) -> None:
 
 
 def write_report(summary: list[dict[str, int | str]], total: int) -> Path:
+    """Persist an import report for reproducibility and later audits."""
+
     REPORT_DIR.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     payload = {
@@ -203,6 +219,8 @@ def write_report(summary: list[dict[str, int | str]], total: int) -> Path:
 
 
 def main() -> None:
+    """CLI entrypoint for refreshing fwwdn term imports."""
+
     parser = argparse.ArgumentParser(description="Import fwwdn/sensitive-stop-words into CSV rules.")
     parser.add_argument("--refresh", action="store_true", help="Download sources even if cached files exist.")
     args = parser.parse_args()

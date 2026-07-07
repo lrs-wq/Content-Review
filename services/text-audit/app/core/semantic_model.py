@@ -1,9 +1,12 @@
+"""Optional semantic text classifier with a deterministic heuristic fallback."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
 
 
 HEURISTIC_OFFENSIVE_TERMS = {
+    # This fallback is intentionally small; the trained classifier and rules carry most coverage.
     "去死": 0.78,
     "废物": 0.72,
     "垃圾": 0.66,
@@ -13,6 +16,8 @@ HEURISTIC_OFFENSIVE_TERMS = {
 
 @dataclass(frozen=True)
 class SemanticResult:
+    """Normalized semantic-model output consumed by the decision layer."""
+
     label: str
     score: float
     provider: str
@@ -21,6 +26,8 @@ class SemanticResult:
 
 
 class SemanticModel:
+    """Lazy optional HuggingFace text-classification wrapper."""
+
     def __init__(self, model_name: str, enabled: bool) -> None:
         self.model_name = model_name
         self.enabled = enabled
@@ -39,6 +46,8 @@ class SemanticModel:
         return "fallback:heuristic"
 
     def infer(self, text: str) -> SemanticResult:
+        """Return semantic risk for text, falling back to cheap heuristics on any failure."""
+
         if self._pipeline is not None:
             try:
                 output = self._pipeline(text[:512], truncation=True)
@@ -53,6 +62,8 @@ class SemanticModel:
         return self._heuristic(text, error=self._load_error)
 
     def _load(self) -> None:
+        """Load the optional transformer pipeline if semantic mode is enabled."""
+
         try:
             from transformers import pipeline
 
@@ -67,6 +78,8 @@ class SemanticModel:
 
     @staticmethod
     def _map_score(label: str, raw_score: float) -> float:
+        """Convert model-specific labels into a generic unsafe score."""
+
         label_lower = label.lower()
         offensive_labels = {"label_1", "offensive", "toxic", "unsafe"}
         safe_labels = {"label_0", "safe", "normal"}
@@ -78,6 +91,8 @@ class SemanticModel:
 
     @staticmethod
     def _heuristic(text: str, error: str | None = None) -> SemanticResult:
+        """Small fallback for obviously offensive wording when the model is unavailable."""
+
         score = 0.0
         label = "safe"
         for term, term_score in HEURISTIC_OFFENSIVE_TERMS.items():
@@ -92,4 +107,3 @@ class SemanticModel:
             enabled=False,
             error=error,
         )
-

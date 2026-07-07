@@ -1,3 +1,5 @@
+"""Visual safety analyzers for NSFW, nudity, QR, skin exposure, and image quality."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -16,12 +18,16 @@ from app.schemas.moderation import DetectionPayload, ImageMetadata
 
 @dataclass(frozen=True)
 class VisualResult:
+    """Visual scores and detections before OCR/text fusion."""
+
     scores: dict[str, float]
     detections: list[DetectionPayload]
 
 
 @dataclass(frozen=True)
 class NsfwPrediction:
+    """Normalized output from the image-level NSFW classifier."""
+
     score: float
     label: str
     evidence: str
@@ -29,12 +35,16 @@ class NsfwPrediction:
 
 @dataclass(frozen=True)
 class NudeDetection:
+    """Normalized NudeNet detection used by the image decision layer."""
+
     label: str
     score: float
     box: list[float] | None
 
 
 class NsfwImageClassifier:
+    """HuggingFace image-classification wrapper for Falconsai NSFW detection."""
+
     unsafe_label_hints = ("nsfw", "porn", "hentai", "sexy", "sexual", "explicit", "nude", "nudity", "adult")
     safe_label_hints = ("sfw", "safe", "normal", "neutral")
 
@@ -60,6 +70,8 @@ class NsfwImageClassifier:
         return f"configured:{self.model_name}:{mode}"
 
     def predict(self, image: Image.Image) -> NsfwPrediction | None:
+        """Return a bounded unsafe score, or None when the model is disabled/unavailable."""
+
         if not self.enabled:
             return None
         classifier = self._load()
@@ -84,6 +96,8 @@ class NsfwImageClassifier:
         top_score = 0.0
         evidence_parts: list[str] = []
 
+        # Some models expose explicit safe/unsafe labels while others only expose top labels.
+        # Interpret both forms into a single 0..1 unsafe score.
         for item in outputs:
             label = str(item.get("label", "")).strip()
             score = float(item.get("score", 0.0))
@@ -109,6 +123,8 @@ class NsfwImageClassifier:
         )
 
     def _load(self) -> Any | None:
+        """Load the local or remote HF pipeline with a short retry cool-down on failure."""
+
         if self._classifier is not None:
             return self._classifier
         now = time.monotonic()
@@ -119,6 +135,8 @@ class NsfwImageClassifier:
         try:
             from transformers import AutoImageProcessor, AutoModelForImageClassification, pipeline  # type: ignore
 
+            # In production we prefer prewarmed local weights so user requests never block on model
+            # downloads. download_on_request is useful only during controlled setup.
             local_files_only = not self.download_on_request
             image_processor = AutoImageProcessor.from_pretrained(
                 self.model_name,
@@ -153,6 +171,8 @@ class NsfwImageClassifier:
 
     @staticmethod
     def _flatten_outputs(raw_outputs: Any) -> list[dict[str, Any]]:
+        """Normalize pipeline outputs that may be nested by transformers version."""
+
         if isinstance(raw_outputs, list) and raw_outputs and isinstance(raw_outputs[0], list):
             raw_outputs = raw_outputs[0]
         if not isinstance(raw_outputs, list):
@@ -161,10 +181,14 @@ class NsfwImageClassifier:
 
     @staticmethod
     def _matches(label: str, hints: tuple[str, ...]) -> bool:
+        """Return whether a model label contains any configured semantic hint."""
+
         return any(hint in label for hint in hints)
 
 
 class NudeNetDetector:
+    """NudeNet wrapper for region-level explicit nudity detection."""
+
     high_risk_classes = (
         "ANUS_EXPOSED",
         "BUTTOCKS_EXPOSED",
@@ -194,6 +218,8 @@ class NudeNetDetector:
         return "configured:nudenet"
 
     def detect(self, image: Image.Image) -> list[NudeDetection]:
+        """Run NudeNet on a temporary JPEG because the library expects a file path."""
+
         if not self.enabled:
             return []
         detector = self._load()
@@ -202,6 +228,7 @@ class NudeNetDetector:
 
         temp_path: str | None = None
         try:
+            # NudeNet's API reads from disk, so keep this temp file scoped tightly to the request.
             with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as temp_file:
                 temp_path = temp_file.name
             image.convert("RGB").save(temp_path, format="JPEG", quality=92)
@@ -234,6 +261,8 @@ class NudeNetDetector:
         return parsed
 
     def _load(self) -> Any | None:
+        """Load NudeNet once and cache failures to keep requests responsive."""
+
         if self._detector is not None:
             return self._detector
         if self._load_attempted:
@@ -251,12 +280,16 @@ class NudeNetDetector:
 
     @staticmethod
     def _parse_box(raw_box: Any) -> list[float] | None:
+        """Normalize NudeNet bounding boxes to a simple float list."""
+
         if isinstance(raw_box, (list, tuple)) and len(raw_box) == 4:
             return [float(value) for value in raw_box]
         return None
 
 
 class VisualAnalyzer:
+    """Runs all fast/local visual checks and emits normalized visual risk signals."""
+
     def __init__(
         self,
         thresholds_path: Path,
@@ -291,6 +324,8 @@ class VisualAnalyzer:
         )
 
     def analyze(self, image: Image.Image, metadata: ImageMetadata) -> VisualResult:
+        """Analyze one image with model and heuristic detectors."""
+
         array = np.array(image)
         skin_score, skin_ratio = self._skin_exposure_score(array)
         qr_score, qr_evidence = self._qr_score(array)
@@ -336,6 +371,8 @@ class VisualAnalyzer:
                 )
             )
 
+        # Skin exposure is intentionally labeled as heuristic. The auditor may suppress it later
+        # if multimodal safety review says the image is benign.
         if skin_score >= self.skin_review_score:
             detections.append(
                 DetectionPayload(
@@ -375,6 +412,8 @@ class VisualAnalyzer:
 
     @staticmethod
     def _skin_exposure_score(rgb: np.ndarray) -> tuple[float, float]:
+        """Estimate skin-like pixel ratio as a weak review signal, not final NSFW evidence."""
+
         # This is a conservative heuristic for review routing, not a nudity model.
         ycrcb = cv2.cvtColor(rgb, cv2.COLOR_RGB2YCrCb)
         lower = np.array([0, 133, 77], dtype=np.uint8)
@@ -394,6 +433,8 @@ class VisualAnalyzer:
 
     @staticmethod
     def _qr_score(rgb: np.ndarray) -> tuple[float, str | None]:
+        """Detect QR-like content with OpenCV as a traffic-diversion signal."""
+
         detector = cv2.QRCodeDetector()
         data, points, _ = detector.detectAndDecode(cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR))
         if points is None:
@@ -405,6 +446,8 @@ class VisualAnalyzer:
 
     @staticmethod
     def _quality_score(metadata: ImageMetadata) -> tuple[float, str]:
+        """Flag tiny or extreme-aspect-ratio images for low-confidence review."""
+
         min_side = min(metadata.width, metadata.height)
         max_side = max(metadata.width, metadata.height)
         if min_side < 80:

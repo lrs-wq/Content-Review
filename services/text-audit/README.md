@@ -17,6 +17,18 @@ docker compose up -d text-audit-service
 
 ## API
 
+默认返回简要结果：
+
+```json
+{
+  "content_id": "c1",
+  "result": "review",
+  "reason": "命中规则 ad:加微信；风险标签 ad"
+}
+```
+
+需要完整调试字段时使用 `?brief=false`，也可以在 JSON 请求体中传入 `"brief": false`。
+
 ```bash
 curl -X POST http://localhost:8010/v1/moderation/text \
   -H "Content-Type: application/json" \

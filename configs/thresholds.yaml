@@ -86,6 +86,7 @@ image:
     max_new_tokens: 256
     review_on_unavailable: true
 video:
+  # Synchronous video upload contract: keep files short and bounded for local/API latency.
   max_video_bytes: 104857600
   max_duration_seconds: 60.0
   allowed_extensions:
@@ -96,6 +97,15 @@ video:
     - "avi"
   frame_sample_fps: 1.0
   max_sampled_frames: 60
+  # PySceneDetect augments fixed sampling by replacing nearby fixed frames with scene-cut frames.
+  scene_detect:
+    enabled: true
+    threshold: 27.0
+    min_scene_len: 15
+    max_scene_frames: 8
+    dedupe_seconds: 0.35
+  # Default video frame pass skips OCR; selective_ocr spends a tiny OCR budget only on useful
+  # frames such as first frame, text-like regions, QR frames, or risky visual frames.
   frame_skip_ocr: true
   stop_on_block: false
   selective_ocr:
@@ -114,8 +124,10 @@ video:
   ffmpeg_path: "ffmpeg"
   ffprobe_path: "ffprobe"
   asr:
-    enabled: false
+    # faster-whisper tiny/cpu/int8 is the local development default. Use base/small on stronger
+    # hardware or when transcription quality matters more than latency.
+    enabled: true
     provider: "faster_whisper"
-    model_name: "small"
+    model_name: "tiny"
     device: "cpu"
     compute_type: "int8"

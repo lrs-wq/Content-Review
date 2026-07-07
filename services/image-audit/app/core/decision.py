@@ -1,3 +1,5 @@
+"""Decision fusion for image moderation signals."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -10,6 +12,8 @@ from app.schemas.moderation import DetectionPayload, TextReviewPayload
 
 @dataclass(frozen=True)
 class ImageDecision:
+    """Internal final image decision before API serialization."""
+
     risk_level: str
     action: str
     labels: list[str]
@@ -17,6 +21,8 @@ class ImageDecision:
 
 
 class ImageDecisionMaker:
+    """Combines visual detections and OCR text review into one action."""
+
     def __init__(self, thresholds_path: Path) -> None:
         thresholds = load_yaml(thresholds_path)
         image_thresholds = thresholds.get("image", {}) if isinstance(thresholds.get("image", {}), dict) else {}
@@ -28,11 +34,15 @@ class ImageDecisionMaker:
         self.ocr_review_score = float(image_thresholds.get("ocr_review_score", 0.65))
 
     def decide(self, visual: VisualResult, text_review: TextReviewPayload) -> ImageDecision:
+        """Apply conservative image decision rules."""
+
         scores = dict(visual.scores)
         scores["ocr_text"] = round(float(text_review.score), 4)
         scores["overall"] = round(max(scores.values(), default=0.0), 4)
 
         labels = self._labels(visual.detections, text_review, scores)
+        # Explicit block signals from text or vision dominate because one strong image/OCR cue is
+        # enough to make the upload unsafe.
         if text_review.action == "block":
             return ImageDecision(risk_level="high", action="block", labels=labels, scores=scores)
         if scores.get("nsfw", 0.0) >= self.nsfw_block_score:
@@ -76,6 +86,8 @@ class ImageDecisionMaker:
         text_review: TextReviewPayload,
         scores: dict[str, float],
     ) -> list[str]:
+        """Collect unique labels from thresholded scores, detections, and OCR review."""
+
         labels: list[str] = []
         if scores.get("nsfw", 0.0) >= self.nsfw_review_score:
             labels.append("nsfw")
@@ -93,10 +105,14 @@ class ImageDecisionMaker:
 
     @staticmethod
     def _max_risk(current: str, incoming: str) -> str:
+        """Return the higher risk level."""
+
         rank = {"none": 0, "low": 1, "medium": 2, "high": 3}
         return incoming if rank.get(incoming, 0) > rank.get(current, 0) else current
 
     @staticmethod
     def _max_detection_risk(detections: list[DetectionPayload]) -> str:
+        """Return the highest risk level among visual detections."""
+
         rank = {"none": 0, "low": 1, "medium": 2, "high": 3}
         return max((detection.risk_level for detection in detections), key=lambda value: rank.get(value, 0), default="low")

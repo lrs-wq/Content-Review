@@ -1,3 +1,5 @@
+"""Prewarm the configured multimodal vision-safety model."""
+
 from __future__ import annotations
 
 import argparse
@@ -9,6 +11,8 @@ from PIL import Image
 
 
 def resolve_model_name(model_name: str) -> str:
+    """Prefer a local model path when it exists, otherwise keep the remote model id."""
+
     path = Path(model_name)
     if path.is_absolute() or path.exists():
         return str(path.resolve())
@@ -19,6 +23,8 @@ def resolve_model_name(model_name: str) -> str:
 
 
 def prewarm_shieldgemma2(model_name: str, device: str, download: bool) -> None:
+    """Load ShieldGemma2 and run a single blank-image policy probe."""
+
     os.environ.setdefault("HF_HUB_DISABLE_XET", "1")
     os.environ.setdefault("HF_HUB_ETAG_TIMEOUT", "30")
     os.environ.setdefault("HF_HUB_DOWNLOAD_TIMEOUT", "600")
@@ -30,6 +36,7 @@ def prewarm_shieldgemma2(model_name: str, device: str, download: bool) -> None:
     started = time.perf_counter()
     processor = AutoProcessor.from_pretrained(resolved, local_files_only=not download)
     kwargs = {"local_files_only": not download}
+    # Use device_map=auto only when requested so explicit cpu/cuda runs remain predictable.
     if device == "auto":
         kwargs["device_map"] = "auto"
         kwargs["torch_dtype"] = torch.bfloat16 if torch.cuda.is_available() else torch.float32
@@ -54,6 +61,8 @@ def prewarm_shieldgemma2(model_name: str, device: str, download: bool) -> None:
 
 
 def main() -> None:
+    """CLI entrypoint for local multimodal safety model prewarming."""
+
     parser = argparse.ArgumentParser(description="Prewarm optional multimodal vision safety models.")
     parser.add_argument("--provider", default="shieldgemma2_local", choices=["shieldgemma2_local"])
     parser.add_argument("--model-name", default="storage/models/shieldgemma-2-4b-it")

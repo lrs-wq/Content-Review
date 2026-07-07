@@ -1,3 +1,5 @@
+"""Smoke tests for text-audit-service core moderation behavior."""
+
 import json
 import sys
 from pathlib import Path
@@ -12,6 +14,8 @@ from app.main import app  # noqa: E402
 
 
 def main() -> None:
+    """Run local TestClient checks without starting an HTTP server."""
+
     client = TestClient(app)
     cases = [
         {
@@ -36,6 +40,9 @@ def main() -> None:
             "expected_action": "block",
         },
         {
+            # These cases intentionally expect no rule hits. They protect the gray-zone agent path
+            # that catches generalized violence such as "kill + animal/person" without enumerating
+            # every possible target noun in the dictionary.
             "content_id": "agent_generalized_human_violence_case",
             "user_id": "u4",
             "scene": "comment",
@@ -87,7 +94,7 @@ def main() -> None:
         expected = case.pop("expected_action")
         expected_agent_used = case.pop("expected_agent_used", None)
         expected_hits = case.pop("expected_hits", None)
-        response = client.post("/v1/moderation/text", json=case)
+        response = client.post("/v1/moderation/text", params={"brief": "false"}, json=case)
         response.raise_for_status()
         body = response.json()
         print(json.dumps(body, ensure_ascii=False))

@@ -10,7 +10,7 @@
 |---|---|---|
 | 文字 | houbb/sensitive-word + thu-coai/roberta-base-cold | 敏感词、广告导流、联系方式、辱骂/攻击性语言初筛 |
 | 图片 | PaddleOCR + Falconsai/nsfw_image_detection + NudeNet | 图片 OCR、NSFW 分类、裸露区域检测和局部打码 |
-| 视频 | FFmpeg/PySceneDetect + 图片审核服务 + faster-whisper + 文字审核服务 | 视频抽帧、关键帧审核、音频转写、字幕/语音文本审核 |
+| 视频 | FFmpeg 固定抽帧 + PySceneDetect 场景补强 + 图片审核服务 + faster-whisper + 文字审核服务 | 视频抽帧、场景切换帧审核、音频转写、字幕/语音文本审核 |
 | 灰区二审 | ShieldGemma 2 或 Llama Guard 4 | 高风险或不确定内容的多模态二次判断 |
 
 核心原则：
@@ -90,7 +90,7 @@
   |-- POST /v1/moderation/image
   |-- POST /v1/moderation/video
   |
-审核网关 audit-gateway
+审核网关 audit-gateway（已落地；默认端口 8040，统一转发文本/图片/视频审核）
   |
   |-- text-audit-service
   |     |-- 文本归一化
@@ -106,7 +106,8 @@
   |
   |-- video-audit-service
         |-- 视频元信息解析
-        |-- FFmpeg/PySceneDetect 抽帧
+        |-- FFmpeg 固定 1fps 抽帧
+        |-- PySceneDetect 场景切换帧补强
         |-- 关键帧回调 image-audit-service
         |-- 音频提取
         |-- faster-whisper 语音转写
@@ -123,11 +124,32 @@
 
 | 服务 | 默认端口 | 运行方式 | 说明 |
 |---|---:|---|---|
-| audit-gateway | 8000 | API 网关 | 统一鉴权、限流、路由、结果聚合 |
+| audit-gateway | 8040 | API 网关，已落地 | 统一文本、图片、视频入口，按 `content_type` 或文件 MIME 转发到 8010/8020/8030 |
 | text-audit-service | 8010 | 独立服务 | 可用 Java/Spring Boot 集成 houbb，也可封装为 HTTP 规则服务 |
 | image-audit-service | 8020 | 独立服务 | 推荐 Python/FastAPI，便于加载 OCR 和视觉模型 |
 | video-audit-service | 8030 | 独立服务 | 推荐 Python/FastAPI + 异步任务队列 |
-| review-admin | 8040 | 可选 | 人工审核、申诉、样本回流、策略配置 |
+| review-admin | 规划中 | 可选 | 人工审核、申诉、样本回流、策略配置 |
+
+### 简要响应
+
+文字、图片和视频审核接口默认开启简要响应，只返回业务标识、审核结果和原因：
+
+```json
+{
+  "content_id": "content_001",
+  "result": "review",
+  "reason": "命中规则 violence:杀人；风险标签 violence"
+}
+```
+
+需要调试完整链路时传入 `brief=false`。JSON 接口可放在 query 或请求体中；multipart 上传接口使用 query，例如：
+
+```bash
+curl -X POST "http://127.0.0.1:8030/v1/moderation/video/upload?brief=false" \
+  -F "content_id=video1" \
+  -F "user_id=u1" \
+  -F "file=@./sample.mp4"
+```
 
 ## 目录结构建议
 
@@ -493,7 +515,7 @@ Content-Type: multipart/form-data
 | `scene` | 否 | 默认 `general`，如 `post_video` |
 | `file` | 是 | 视频文件，默认支持 mp4/mov/webm/mkv/avi |
 | `related_text` | 否 | 视频标题、正文、评论上下文 |
-| `provided_asr_text` | 否 | 上游已有 ASR 转写文本 |
+| `provided_asr_text` | 否 | 上游已有 ASR 转写文本；存在时优先使用，不重复跑本地 ASR；未提供且视频有音轨时会自动用 faster-whisper 转写 |
 | `skip_ocr` | 否 | 是否让帧图片审核跳过 OCR |
 | `context` | 否 | JSON 对象字符串 |
 
@@ -504,9 +526,11 @@ Content-Type: multipart/form-data
   -> ffprobe 校验格式、时长、分辨率、编码
   -> duration > 60s 直接返回 video_too_long
   -> ffmpeg 按 1 fps 抽帧，最多 60 帧
+  -> PySceneDetect 检测场景切换帧，并替换附近固定帧补强覆盖
   -> 每帧先调用 image-audit-service，默认跳过 OCR
   -> 仅首帧/明显文字区域/二维码或风险帧在配额内开启 OCR
-  -> 聚合帧 OCR 文本 + provided_asr_text
+  -> faster-whisper 自动转写音频，若 provided_asr_text 存在则优先使用外部转写，无音轨则跳过 ASR
+  -> 聚合帧 OCR 文本 + ASR 文本
   -> 调用 text-audit-service
   -> 融合帧风险和文本风险，输出 allow / review / block
 ```
@@ -516,6 +540,20 @@ Content-Type: multipart/form-data
 ```powershell
 powershell -ExecutionPolicy Bypass -File tools\start_video_audit.ps1
 ```
+
+ASR 默认配置：
+
+- 本地开发默认启用 `faster-whisper`，模型为 `tiny`、`cpu`、`int8`，用于先保证同步接口可运行和低延迟验证。
+- 如果视频没有音轨，返回 `asr.status=skipped:no_audio_stream`，不会加载 ASR 模型。
+- 如果请求传入 `provided_asr_text`，优先使用外部转写文本，不重复跑本地 ASR。
+- `tools\start_video_audit.ps1` 会在存在 `apikey.txt` 且环境变量未设置时读取 HuggingFace token 到当前进程环境；该文件已被 `.gitignore` 排除。
+- 中国网络环境下脚本默认设置 `HF_ENDPOINT=https://hf-mirror.com` 下载公开 faster-whisper 权重；需要官方 Hub 时可提前设置 `HF_ENDPOINT` 覆盖。
+
+抽帧默认配置：
+
+- 固定抽帧：`frame_sample_fps=1`，`max_sampled_frames=60`。
+- 场景补强：默认启用 PySceneDetect，`threshold=27`，最多选 `8` 个场景切换帧。
+- 合并策略：场景切换帧优先；当固定帧已经达到 60 帧上限时，场景帧会替换时间上最接近的固定帧，避免下游图片审核调用数突然增大。
 
 测试：
 
@@ -711,37 +749,56 @@ mkdir -p models configs storage/samples storage/frames storage/reports
 docker compose up -d text-audit-service
 docker compose up -d image-audit-service
 docker compose up -d video-audit-service
-docker compose up -d audit-gateway
+docker compose up -d gateway-service
 ```
 
-如果本地开发，不通过 Docker，也建议固定端口运行：
+如果本地开发，不通过 Docker，也建议固定端口运行。文本服务可直接启动：
 
 ```bash
 cd services/text-audit
 uvicorn app.main:app --host 0.0.0.0 --port 8010
 ```
 
+图片和视频服务建议使用项目脚本启动，脚本会设置 OCR、视觉模型、ASR、HuggingFace 镜像和端口重启逻辑：
+
 ```bash
-cd services/image-audit
-uvicorn app.main:app --host 0.0.0.0 --port 8020
+powershell -ExecutionPolicy Bypass -File tools\start_image_audit_paddleocr.ps1
 ```
 
 ```bash
-cd services/video-audit
-uvicorn app.main:app --host 0.0.0.0 --port 8030
+powershell -ExecutionPolicy Bypass -File tools\start_video_audit.ps1
 ```
 
 ```bash
-cd services/gateway
-uvicorn app.main:app --host 0.0.0.0 --port 8000
+powershell -ExecutionPolicy Bypass -File tools\start_gateway.ps1
 ```
 
 ### 3. 接口调用示例
 
+统一审核入口（推荐业务侧调用，默认端口 `8040`）：
+
+```bash
+curl -X POST http://localhost:8040/v1/moderation \
+  -H "Content-Type: application/json" \
+  -d '{"content_type":"text","content_id":"c1","user_id":"u1","scene":"comment","text":"待审核文本","context":{}}'
+```
+
+图片和视频也走同一个路径，通过 `content_type` 或上传文件 MIME 自动识别：
+
+```bash
+curl -X POST http://localhost:8040/v1/moderation \
+  -F "content_type=image" \
+  -F "content_id=img1" \
+  -F "user_id=u1" \
+  -F "skip_ocr=true" \
+  -F "context={}" \
+  -F "file=@./sample.jpg"
+```
+
 文字审核：
 
 ```bash
-curl -X POST http://localhost:8000/v1/moderation/text \
+curl -X POST http://localhost:8010/v1/moderation/text \
   -H "Content-Type: application/json" \
   -d '{"content_id":"c1","user_id":"u1","scene":"comment","text":"待审核文本"}'
 ```
@@ -770,20 +827,20 @@ curl -X POST http://localhost:8020/v1/moderation/image/upload \
 视频审核：
 
 ```bash
-curl -X POST http://localhost:8000/v1/moderation/video \
-  -H "Content-Type: application/json" \
-  -d '{"content_id":"v1","user_id":"u1","scene":"post_video","video_url":"https://example.com/video.mp4"}'
+curl -X POST http://localhost:8030/v1/moderation/video/upload \
+  -F "content_id=v1" \
+  -F "user_id=u1" \
+  -F "scene=post_video" \
+  -F "related_text=视频标题或正文" \
+  -F "provided_asr_text=" \
+  -F "skip_ocr=true" \
+  -F "context={}" \
+  -F "file=@./sample.mp4"
 ```
 
-查询视频任务：
+### 4. 可视化内容审核测试台
 
-```bash
-curl http://localhost:8000/v1/moderation/tasks/task_video_10001
-```
-
-### 4. 可视化测试文字审核
-
-项目内置一个轻量测试页，可以输入文本、图片 OCR 文本、视频 ASR 文本和上下文 JSON，查看审核返回结果与处理耗时。
+项目内置一个轻量测试页，可以测试文本、图片、视频三类接口：文本支持图片 OCR/视频 ASR 上下文，图片支持文件上传和已有 OCR 文本，视频支持文件上传、已有 ASR 文本和强制跳过帧 OCR。
 
 ```bash
 python tools/text-audit-ui/serve.py --host 0.0.0.0 --port 8050
@@ -845,7 +902,7 @@ D:\Anaconda3\envs\content-review-ocr\python.exe tools/run_image_safety_report.py
 如果要同时尝试 UnsafeBench，需要先在 HuggingFace 数据集页面接受 DUA，并提供有权限的 token：
 
 ```bash
-D:\Anaconda3\envs\content-review-ocr\python.exe tools/run_image_safety_report.py --include-unsafebench --hf-token-file D:\gogelila\comfy\apikey.txt --skip-ocr
+D:\Anaconda3\envs\content-review-ocr\python.exe tools/run_image_safety_report.py --include-unsafebench --hf-token-file apikey.txt --skip-ocr
 ```
 
 如果 token 未授权，脚本会跳过 UnsafeBench，并在报告中记录 `skipped:download_or_read_failed`，不会打印或写入 token。
@@ -875,7 +932,7 @@ storage/reports/image_safety_report_latest.json
 | text-audit-service | 2-4 核 | 可选 | 敏感词 CPU 足够，文本模型可用小 GPU 加速 |
 | image-audit-service | 4-8 核 | 推荐 | NSFW、NudeNet、OCR 对 GPU 更友好 |
 | video-audit-service | 4-8 核 | 推荐 | 抽帧 CPU 可跑，批量帧审核和 ASR 建议 GPU |
-| audit-gateway | 2 核 | 不需要 | 主要做路由、鉴权、聚合 |
+| audit-gateway | 2 核 | 不需要 | 已落地 8040 统一入口，转发到 text/image/video 审核服务 |
 
 ## 样本回流和持续优化
 

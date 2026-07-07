@@ -1,3 +1,5 @@
+"""Selective OCR planner for sampled video frames."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

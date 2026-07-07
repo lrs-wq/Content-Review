@@ -1,3 +1,5 @@
+"""Decision fusion logic for the text moderation layers."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -10,6 +12,8 @@ from app.core.semantic_model import SemanticResult
 
 
 class AgentDecision(Protocol):
+    """Small subset of the agent result needed by the decision merger."""
+
     used: bool
     risk_level: str
     action: str
@@ -18,6 +22,8 @@ class AgentDecision(Protocol):
 
 
 class ClassifierDecision(Protocol):
+    """Small subset of classifier result needed by the decision merger."""
+
     enabled: bool
     label: str
     score: float
@@ -27,6 +33,8 @@ class ClassifierDecision(Protocol):
 
 @dataclass(frozen=True)
 class Decision:
+    """Internal final decision before conversion to the API response schema."""
+
     risk_level: str
     action: str
     labels: list[str]
@@ -34,6 +42,8 @@ class Decision:
 
 
 class DecisionMaker:
+    """Combines deterministic rules, semantic scores, classifier output, and agent review."""
+
     def __init__(self, thresholds_path: Path) -> None:
         thresholds = load_yaml(thresholds_path)
         text_thresholds = thresholds.get("text", {}) if isinstance(thresholds.get("text", {}), dict) else {}
@@ -46,6 +56,8 @@ class DecisionMaker:
         semantic: SemanticResult,
         classifier: ClassifierDecision | None = None,
     ) -> Decision:
+        """Create the preliminary decision before optional agent escalation."""
+
         max_rule_score = max((hit.score for hit in hits), default=0.0)
         classifier_score = self._classifier_risk_score(classifier)
         max_score = max(max_rule_score, semantic.score, classifier_score)
@@ -58,6 +70,8 @@ class DecisionMaker:
             "overall": round(max_score, 4),
         }
 
+        # Blocking is deliberately conservative: explicit block rules, a high semantic score, or a
+        # classifier block label can each independently block the content.
         if self._should_block(hits, semantic, classifier, max_score):
             return Decision(risk_level="high", action="block", labels=labels, scores=scores)
 
@@ -74,6 +88,8 @@ class DecisionMaker:
         return Decision(risk_level="none", action="allow", labels=labels, scores=scores)
 
     def apply_agent(self, preliminary: Decision, agent: AgentDecision) -> Decision:
+        """Merge the gray-zone agent result back into the preliminary decision."""
+
         if not agent.used or agent.action == "allow":
             scores = dict(preliminary.scores)
             scores["agent"] = round(agent.score, 4)
@@ -102,6 +118,8 @@ class DecisionMaker:
         classifier: ClassifierDecision | None,
         max_score: float,
     ) -> bool:
+        """Return whether any high-confidence layer requires blocking."""
+
         if any(hit.action == "block" and hit.risk_level == "high" for hit in hits):
             return True
         if semantic.score >= self.block_score:
@@ -117,6 +135,8 @@ class DecisionMaker:
         classifier: ClassifierDecision | None,
         max_score: float,
     ) -> bool:
+        """Return whether a non-blocking risk should enter human review."""
+
         if any(hit.action in {"review", "block"} for hit in hits):
             return True
         if semantic.score >= self.review_score:
@@ -131,6 +151,8 @@ class DecisionMaker:
         semantic: SemanticResult,
         classifier: ClassifierDecision | None,
     ) -> list[str]:
+        """Collect unique labels while avoiding low-confidence classifier noise."""
+
         labels: list[str] = []
         for hit in hits:
             if hit.category not in labels:
@@ -151,11 +173,15 @@ class DecisionMaker:
 
     @staticmethod
     def _classifier_risk_score(classifier: ClassifierDecision | None) -> float:
+        """Ignore safe/disabled classifier results when computing overall risk."""
+
         if classifier is None or not classifier.enabled or classifier.label == "safe":
             return 0.0
         return classifier.score
 
     @staticmethod
     def _max_risk(current: str, incoming: str) -> str:
+        """Return the higher risk level using the service's fixed ordering."""
+
         rank = {"none": 0, "low": 1, "medium": 2, "high": 3}
         return incoming if rank.get(incoming, 0) > rank.get(current, 0) else current

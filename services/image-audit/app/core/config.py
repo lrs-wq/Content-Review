@@ -1,3 +1,5 @@
+"""Configuration loader for image-audit-service."""
+
 from __future__ import annotations
 
 import os
@@ -9,11 +11,15 @@ import yaml
 
 
 def _repo_root() -> Path:
+    """Resolve the repository root from this service module location."""
+
     return Path(__file__).resolve().parents[4]
 
 
 @dataclass(frozen=True)
 class Settings:
+    """Runtime settings after merging YAML defaults and environment overrides."""
+
     repo_root: Path
     config_dir: Path
     policy_version: str
@@ -48,6 +54,8 @@ class Settings:
 
 
 def _env_bool(name: str, default: bool) -> bool:
+    """Parse common boolean environment variable spellings."""
+
     raw = os.getenv(name)
     if raw is None:
         return default
@@ -55,6 +63,8 @@ def _env_bool(name: str, default: bool) -> bool:
 
 
 def load_yaml(path: Path) -> dict[str, Any]:
+    """Load a YAML object, returning an empty dict for missing or invalid files."""
+
     if not path.exists():
         return {}
     with path.open("r", encoding="utf-8") as stream:
@@ -63,6 +73,8 @@ def load_yaml(path: Path) -> dict[str, Any]:
 
 
 def _resolve_model_name(root: Path, raw_model_name: str) -> str:
+    """Prefer local model directories while preserving remote HuggingFace model ids."""
+
     model_path = Path(raw_model_name)
     if model_path.is_absolute():
         return str(model_path)
@@ -73,6 +85,8 @@ def _resolve_model_name(root: Path, raw_model_name: str) -> str:
 
 
 def get_settings() -> Settings:
+    """Resolve all image-service settings with environment overrides."""
+
     root = Path(os.getenv("PROJECT_ROOT", _repo_root())).resolve()
     config_dir = Path(os.getenv("CONFIG_DIR", root / "configs")).resolve()
     thresholds_path = Path(os.getenv("THRESHOLDS_PATH", config_dir / "thresholds.yaml")).resolve()

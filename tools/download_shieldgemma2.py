@@ -1,3 +1,9 @@
+"""Download ShieldGemma 2 weights with resumable range requests.
+
+The official model files are large, so this helper splits safetensors files into byte ranges and
+assembles them locally. It never prints the HuggingFace token.
+"""
+
 from __future__ import annotations
 
 import argparse
@@ -30,6 +36,8 @@ FILES: dict[str, int] = {
 
 
 class Progress:
+    """Thread-safe download progress tracker shared by range workers."""
+
     def __init__(self) -> None:
         self.lock = threading.Lock()
         self.bytes_done = 0
@@ -49,6 +57,8 @@ class Progress:
 
 
 def read_token(path: Path) -> str:
+    """Read a HuggingFace token from disk without echoing it to stdout."""
+
     if not path.exists():
         raise FileNotFoundError(f"HF token file not found: {path}")
     token = path.read_text(encoding="utf-8").strip()
@@ -58,11 +68,15 @@ def read_token(path: Path) -> str:
 
 
 def model_url(filename: str) -> str:
+    """Build the model file URL for a filename under the main branch."""
+
     encoded = "/".join(quote(part) for part in filename.split("/"))
     return f"https://huggingface.co/{MODEL_ID}/resolve/main/{encoded}"
 
 
 def request_headers(token: str, start: int | None = None, end: int | None = None) -> dict[str, str]:
+    """Build request headers, optionally adding an HTTP Range for resumable chunks."""
+
     headers = {"Authorization": f"Bearer {token}", "User-Agent": "content-review-model-downloader/1.0"}
     if start is not None and end is not None:
         headers["Range"] = f"bytes={start}-{end}"
@@ -70,6 +84,8 @@ def request_headers(token: str, start: int | None = None, end: int | None = None
 
 
 def download_small_file(filename: str, expected_size: int, target: Path, token: str, proxies: dict[str, str] | None) -> None:
+    """Download and validate a small metadata/tokenizer file in one request."""
+
     if target.exists() and target.stat().st_size == expected_size:
         print(f"skip {filename} size={expected_size}", flush=True)
         return
@@ -98,6 +114,8 @@ def download_part(
     proxies: dict[str, str] | None,
     progress: Progress,
 ) -> None:
+    """Download one byte-range part, resuming any existing partial file."""
+
     expected = end - start + 1
     current = part_path.stat().st_size if part_path.exists() else 0
     if current == expected:
@@ -137,6 +155,8 @@ def download_part(
 
 
 def assemble_parts(filename: str, expected_size: int, target: Path, parts_dir: Path, part_count: int) -> None:
+    """Concatenate validated part files into the final model shard."""
+
     tmp_path = target.with_suffix(target.suffix + ".tmp")
     with tmp_path.open("wb") as output:
         for index in range(part_count):
@@ -163,6 +183,8 @@ def download_large_file(
     workers: int,
     chunk_size: int,
 ) -> None:
+    """Download a large model file with parallel range requests."""
+
     if target.exists() and target.stat().st_size == expected_size:
         print(f"skip {filename} size={expected_size}", flush=True)
         return
@@ -192,6 +214,8 @@ def download_large_file(
 
 
 def main() -> int:
+    """CLI entrypoint for downloading all required ShieldGemma 2 files."""
+
     parser = argparse.ArgumentParser(description="Download ShieldGemma 2 required files with resumable range requests.")
     parser.add_argument("--token-file", default="apikey.txt")
     parser.add_argument("--output-dir", default="storage/models/shieldgemma-2-4b-it")

@@ -1,3 +1,5 @@
+"""Run a regression report for the configured political sensitivity dictionary."""
+
 from __future__ import annotations
 
 import csv
@@ -20,11 +22,15 @@ from app.main import app  # noqa: E402
 
 
 def load_terms() -> list[dict[str, str]]:
+    """Load enabled political terms from configs/political_terms.csv."""
+
     with POLITICAL_TERMS_PATH.open("r", encoding="utf-8-sig", newline="") as stream:
         return [row for row in csv.DictReader(stream) if (row.get("enabled") or "").lower() == "true"]
 
 
 def run_case(client: TestClient, row: dict[str, str]) -> dict:
+    """Verify one political term is detected with the configured action and label."""
+
     term = row["term"]
     payload = {
         "content_id": f"political_{term}",
@@ -34,7 +40,7 @@ def run_case(client: TestClient, row: dict[str, str]) -> dict:
         "context": {},
     }
     started = time.perf_counter()
-    response = client.post("/v1/moderation/text", json=payload)
+    response = client.post("/v1/moderation/text", params={"brief": "false"}, json=payload)
     elapsed_ms = (time.perf_counter() - started) * 1000
     response.raise_for_status()
     body = response.json()
@@ -54,6 +60,8 @@ def run_case(client: TestClient, row: dict[str, str]) -> dict:
 
 
 def render(results: list[dict]) -> str:
+    """Render a concise Markdown summary for dictionary maintainers."""
+
     total = len(results)
     passed = sum(1 for item in results if item["passed"])
     high = sum(1 for item in results if item["expected_risk_level"] == "high")
@@ -100,6 +108,8 @@ def render(results: list[dict]) -> str:
 
 
 def main() -> None:
+    """CLI entrypoint for political term regression reporting."""
+
     REPORT_DIR.mkdir(parents=True, exist_ok=True)
     client = TestClient(app)
     rows = load_terms()
@@ -122,4 +132,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

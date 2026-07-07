@@ -1,3 +1,5 @@
+"""Deterministic term-rule engine for fast, explainable moderation hits."""
+
 from __future__ import annotations
 
 import csv
@@ -10,6 +12,7 @@ from app.core.normalizer import compact_text, normalize_text
 
 
 RISK_SCORE = {
+    # These scores are deliberately coarse; the CSV risk/action remains the source of truth.
     "high": 0.95,
     "medium": 0.75,
     "low": 0.45,
@@ -18,6 +21,8 @@ RISK_SCORE = {
 
 @dataclass(frozen=True)
 class TermRule:
+    """One CSV row normalized into several match-friendly forms."""
+
     term: str
     category: str
     risk_level: str
@@ -29,12 +34,15 @@ class TermRule:
     compact_term: str = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
+        # Precompute normalized forms once so hot-path scanning stays cheap.
         object.__setattr__(self, "normalized_term", normalize_text(self.term))
         object.__setattr__(self, "compact_term", compact_text(self.term))
 
 
 @dataclass(frozen=True)
 class RuleHit:
+    """Matched rule evidence returned to the API response."""
+
     type: str
     category: str
     term: str
@@ -46,6 +54,8 @@ class RuleHit:
 
 @dataclass(frozen=True)
 class RuleScanResult:
+    """Full rule scan output, including allow-list hits for debugging."""
+
     normalized_text: str
     compacted_text: str
     hits: list[RuleHit]
@@ -53,12 +63,16 @@ class RuleScanResult:
 
 
 class RuleEngine:
+    """Loads CSV dictionaries and scans text using exact, regex, compact, or contains matching."""
+
     def __init__(self, sensitive_terms_path: Path | Iterable[Path], allow_terms_path: Path) -> None:
         paths = [sensitive_terms_path] if isinstance(sensitive_terms_path, Path) else list(sensitive_terms_path)
         self.rules = self._load_rule_files(paths)
         self.allow_terms = self._load_allow_terms(allow_terms_path)
 
     def scan(self, text: str) -> RuleScanResult:
+        """Scan one text package and return all rule hits that are not allow-listed."""
+
         normalized = normalize_text(text)
         compacted = compact_text(text)
         allow_hits = self._find_allow_hits(normalized)
@@ -85,6 +99,8 @@ class RuleEngine:
         compacted: str,
         allow_hits: Iterable[str],
     ) -> RuleHit | None:
+        """Match a single rule against normalized and compacted text forms."""
+
         if self._is_allowed(rule, allow_hits):
             return None
 
@@ -123,6 +139,8 @@ class RuleEngine:
         )
 
     def _is_allowed(self, rule: TermRule, allow_hits: Iterable[str]) -> bool:
+        """Suppress a sensitive hit when an allow-list phrase contains the same normalized token."""
+
         normalized_rule = rule.normalized_term
         compact_rule = rule.compact_term
         for allow_term in allow_hits:
@@ -133,6 +151,8 @@ class RuleEngine:
         return False
 
     def _find_allow_hits(self, normalized: str) -> list[str]:
+        """Return allow-list phrases present in the normalized text."""
+
         hits: list[str] = []
         for term in self.allow_terms:
             if term and term in normalized:
@@ -141,6 +161,8 @@ class RuleEngine:
 
     @staticmethod
     def _load_rules(path: Path) -> list[TermRule]:
+        """Load one CSV term dictionary, tolerating missing files for optional sources."""
+
         if not path.exists():
             return []
         rules: list[TermRule] = []
@@ -164,6 +186,8 @@ class RuleEngine:
 
     @classmethod
     def _load_rule_files(cls, paths: Iterable[Path]) -> list[TermRule]:
+        """Load multiple dictionaries in configured order."""
+
         rules: list[TermRule] = []
         for path in paths:
             rules.extend(cls._load_rules(path))
@@ -171,6 +195,8 @@ class RuleEngine:
 
     @staticmethod
     def _load_allow_terms(path: Path) -> list[str]:
+        """Load normalized allow-list terms used to suppress obvious false positives."""
+
         if not path.exists():
             return []
         terms: list[str] = []

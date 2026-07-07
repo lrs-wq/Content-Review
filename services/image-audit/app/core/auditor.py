@@ -1,3 +1,5 @@
+"""Pipeline coordinator for image moderation."""
+
 from __future__ import annotations
 
 import time
@@ -19,6 +21,8 @@ from app.schemas.moderation import (
 
 
 class ImageAuditor:
+    """Runs image validation, visual safety checks, optional OCR, text review, and fusion."""
+
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
         self.policy_version = settings.policy_version
@@ -53,12 +57,15 @@ class ImageAuditor:
         return self.vision_safety.status
 
     def audit(self, payload: ImageModerationRequest) -> ImageModerationResponse:
+        """Moderate one image request and return an explainable decision payload."""
+
         started = time.perf_counter()
         loaded = self.loader.load(payload)
         visual_result = self.visual.analyze(loaded.pil_image, loaded.metadata)
         if payload.skip_ocr:
             from app.core.ocr import OcrResult
 
+            # Video moderation uses this path for most frames so image classification stays fast.
             ocr_result = OcrResult(
                 status="skipped",
                 text="",
@@ -70,6 +77,8 @@ class ImageAuditor:
         else:
             ocr_result = self.ocr.recognize(loaded.pil_image, payload.provided_ocr_text)
         text_review = self.text_client.review_ocr_text(payload, ocr_result.text)
+        # Multimodal safety review is intentionally gated by configuration/gray-zone logic inside
+        # VisionSafetyAgent so only uncertain frames/images pay the heavy model cost.
         vision_safety_result = self.vision_safety.review(
             loaded.pil_image,
             payload,
@@ -79,6 +88,7 @@ class ImageAuditor:
         if vision_safety_result.detections:
             from app.core.visual_analyzer import VisualResult
 
+            # Merge multimodal verdicts into the visual detections before final decision fusion.
             visual_result = VisualResult(
                 scores={**visual_result.scores, **vision_safety_result.scores},
                 detections=[*visual_result.detections, *vision_safety_result.detections],
@@ -124,6 +134,8 @@ class ImageAuditor:
         visual_result: VisualResult,
         vision_safety_result: VisionSafetyResult,
     ) -> tuple[VisualResult, str]:
+        """Suppress skin-color-only false positives when multimodal review found no risk."""
+
         has_skin_heuristic = any(
             detection.label == "skin_exposure_heuristic" for detection in visual_result.detections
         )
@@ -134,6 +146,8 @@ class ImageAuditor:
 
         nsfw_score = float(visual_result.scores.get("nsfw", 0.0))
         nudity_score = float(visual_result.scores.get("nudity", 0.0))
+        # The OpenCV skin heuristic is only a weak routing signal. Keep it only when a real model
+        # also sees sexual/nudity evidence; this prevents cat/fur/wood/skin-tone false positives.
         has_sexual_model_support = nsfw_score >= 0.20 or nudity_score >= 0.20 or any(
             detection.label in {"nsfw", "nudity", "vision_sexual"}
             for detection in visual_result.detections
@@ -154,5 +168,7 @@ class ImageAuditor:
 
     @staticmethod
     def _trace_id() -> str:
+        """Create a short id for logs and UI debugging."""
+
         now = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
         return f"img_tr_{now}_{uuid4().hex[:8]}"

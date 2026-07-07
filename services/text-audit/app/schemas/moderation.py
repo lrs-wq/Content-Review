@@ -1,3 +1,5 @@
+"""Pydantic schemas shared by the text moderation HTTP API."""
+
 from __future__ import annotations
 
 from typing import Any, Literal
@@ -10,6 +12,8 @@ Action = Literal["allow", "review", "block"]
 
 
 class TextModerationRequest(BaseModel):
+    """Text request with optional multimodal context gathered by upstream services."""
+
     content_id: str = Field(..., min_length=1)
     user_id: str = Field(..., min_length=1)
     scene: str = Field(default="general")
@@ -18,9 +22,12 @@ class TextModerationRequest(BaseModel):
     image_ocr_text: list[str] = Field(default_factory=list)
     video_transcript: str | None = Field(default=None)
     context: dict[str, Any] = Field(default_factory=dict)
+    brief: bool = Field(default=True, exclude=True)
 
 
 class RuleHitPayload(BaseModel):
+    """A deterministic rule hit returned for explainability and audit logs."""
+
     type: str
     category: str
     term: str
@@ -31,6 +38,8 @@ class RuleHitPayload(BaseModel):
 
 
 class AgentReviewPayload(BaseModel):
+    """Gray-zone context review result from the lightweight agent layer."""
+
     used: bool
     trigger_reason: list[str]
     risk_level: RiskLevel
@@ -42,6 +51,8 @@ class AgentReviewPayload(BaseModel):
 
 
 class ClassifierReviewPayload(BaseModel):
+    """Small classifier output normalized for API consumers."""
+
     enabled: bool
     label: str
     score: float
@@ -52,6 +63,8 @@ class ClassifierReviewPayload(BaseModel):
 
 
 class TextModerationResponse(BaseModel):
+    """Final text moderation decision plus evidence from all enabled layers."""
+
     trace_id: str
     content_id: str
     risk_level: RiskLevel
@@ -67,7 +80,17 @@ class TextModerationResponse(BaseModel):
     model_status: str
 
 
+class BriefModerationResponse(BaseModel):
+    """Default compact response for business callers that only need the final decision."""
+
+    content_id: str
+    result: Action
+    reason: str
+
+
 class HealthResponse(BaseModel):
+    """Readiness payload for service dependency checks."""
+
     status: str
     service: str
     policy_version: str

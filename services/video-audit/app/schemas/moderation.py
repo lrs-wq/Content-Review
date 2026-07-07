@@ -1,3 +1,5 @@
+"""Pydantic schemas for video moderation and dependency health responses."""
+
 from __future__ import annotations
 
 from typing import Any, Literal
@@ -40,6 +42,7 @@ class FrameAuditPayload(BaseModel):
 
     index: int
     timestamp_seconds: float
+    source: str = "fixed"
     action: str
     risk_level: str
     labels: list[str] = Field(default_factory=list)
@@ -120,6 +123,14 @@ class VideoModerationResponse(BaseModel):
     policy_version: str
     model_status: dict[str, str]
     elapsed_ms: float
+
+
+class BriefModerationResponse(BaseModel):
+    """Default compact response for business callers that only need the final decision."""
+
+    content_id: str
+    result: Action
+    reason: str
 
 
 class HealthResponse(BaseModel):

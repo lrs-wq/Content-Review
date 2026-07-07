@@ -1,3 +1,5 @@
+"""ffprobe-based video validation and metadata extraction."""
+
 from __future__ import annotations
 
 import hashlib

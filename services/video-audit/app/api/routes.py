@@ -1,3 +1,5 @@
+"""HTTP routes for video moderation, multipart upload, and health checks."""
+
 from __future__ import annotations
 
 import json
@@ -5,11 +7,12 @@ import tempfile
 from functools import lru_cache
 from pathlib import Path
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile
 
 from app.core.auditor import VideoAuditInput, VideoAuditor
+from app.core.brief import to_brief_response
 from app.core.config import get_settings
-from app.schemas.moderation import HealthResponse, VideoModerationResponse
+from app.schemas.moderation import BriefModerationResponse, HealthResponse, VideoModerationResponse
 
 
 router = APIRouter()
@@ -42,7 +45,7 @@ def health() -> HealthResponse:
     )
 
 
-@router.post("/v1/moderation/video/upload", response_model=VideoModerationResponse)
+@router.post("/v1/moderation/video/upload", response_model=VideoModerationResponse | BriefModerationResponse)
 async def moderate_video_upload(
     content_id: str = Form(...),
     user_id: str = Form(...),
@@ -51,8 +54,9 @@ async def moderate_video_upload(
     provided_asr_text: str | None = Form(None),
     skip_ocr: bool = Form(False),
     context: str | None = Form(None),
+    brief: bool = Query(True),
     file: UploadFile = File(...),
-) -> VideoModerationResponse:
+) -> VideoModerationResponse | BriefModerationResponse:
     """Accept a multipart video upload and run synchronous moderation.
 
     The endpoint writes the upload to a temporary file because ffprobe/ffmpeg and optional ASR
@@ -62,6 +66,8 @@ async def moderate_video_upload(
     settings = get_settings()
     context_payload = {}
     if context:
+        # Video upload uses a form field for context, so validate that it is a JSON object before
+        # the expensive file/probe/model work begins.
         parsed_context = json.loads(context)
         if not isinstance(parsed_context, dict):
             raise HTTPException(status_code=400, detail="context must be a JSON object")
@@ -97,7 +103,10 @@ async def moderate_video_upload(
             mime_type=file.content_type or "application/octet-stream",
             bytes=total_bytes,
         )
-        return get_auditor().audit(payload)
+        response = get_auditor().audit(payload)
+        if brief:
+            return to_brief_response(response)
+        return response
     finally:
         if temp_path:
             Path(temp_path).unlink(missing_ok=True)

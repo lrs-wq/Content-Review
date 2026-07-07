@@ -17,6 +17,18 @@ docker compose up -d image-audit-service
 
 ## API
 
+默认返回简要结果：
+
+```json
+{
+  "content_id": "img1",
+  "result": "review",
+  "reason": "视觉命中 nsfw(0.82)/falconsai；风险标签 nsfw"
+}
+```
+
+需要完整调试字段时使用 `?brief=false`。JSON 图片接口也可以在请求体中传入 `"brief": false`；文件上传接口使用 query 参数。
+
 JSON base64：
 
 ```bash

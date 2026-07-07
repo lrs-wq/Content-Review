@@ -1,3 +1,5 @@
+"""Final decision fusion for sampled frames, OCR text, and ASR transcript risk."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
