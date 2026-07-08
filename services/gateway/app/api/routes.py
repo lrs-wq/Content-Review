@@ -88,6 +88,53 @@ async def moderate(
     return _response(forwarded, content_id=_first_scalar(payload.fields.get("content_id")), brief=use_brief)
 
 
+@router.post("/v1/moderation/text")
+async def moderate_text_compat(
+    request: Request,
+    brief: bool | None = Query(default=None),
+    client: GatewayClient = Depends(get_gateway_client),
+) -> JSONResponse:
+    """Compatibility endpoint for callers that still use the text-audit path on gateway port."""
+
+    payload = await _parse_request(request)
+    use_brief = _resolve_brief(brief, payload.fields)
+    forwarded = await client.post_json(
+        get_settings().text_audit_url,
+        _text_payload(payload.fields),
+        use_brief,
+    )
+    return _response(forwarded, content_id=_first_scalar(payload.fields.get("content_id")), brief=use_brief)
+
+
+@router.post("/v1/moderation/image")
+@router.post("/v1/moderation/image/upload")
+async def moderate_image_compat(
+    request: Request,
+    brief: bool | None = Query(default=None),
+    client: GatewayClient = Depends(get_gateway_client),
+) -> JSONResponse:
+    """Compatibility endpoints for callers that still use image-audit paths on gateway port."""
+
+    payload = await _parse_request(request)
+    use_brief = _resolve_brief(brief, payload.fields)
+    forwarded = await _forward_image(client, payload, use_brief)
+    return _response(forwarded, content_id=_first_scalar(payload.fields.get("content_id")), brief=use_brief)
+
+
+@router.post("/v1/moderation/video/upload")
+async def moderate_video_compat(
+    request: Request,
+    brief: bool | None = Query(default=None),
+    client: GatewayClient = Depends(get_gateway_client),
+) -> JSONResponse:
+    """Compatibility endpoint for callers that still use the video-audit path on gateway port."""
+
+    payload = await _parse_request(request)
+    use_brief = _resolve_brief(brief, payload.fields)
+    forwarded = await _forward_video(client, payload, use_brief)
+    return _response(forwarded, content_id=_first_scalar(payload.fields.get("content_id")), brief=use_brief)
+
+
 async def _forward_image(client: GatewayClient, payload: "ParsedPayload", brief: bool) -> ForwardedResponse:
     """Forward an image request either to the upload endpoint or the JSON endpoint."""
 
