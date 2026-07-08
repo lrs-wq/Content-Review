@@ -23,7 +23,9 @@ docker compose up -d text-audit-service
 {
   "content_id": "c1",
   "result": "review",
-  "reason": "命中规则 ad:加微信；风险标签 ad"
+  "action": "review",
+  "risk_level": "medium",
+  "reason": "命中规则 ad:加微信；风险标签 广告引流风险"
 }
 ```
 

@@ -102,14 +102,14 @@ class SmallAgent:
             score = 0.94 if not relief else 0.72
             risk_level = "high" if not relief else "medium"
             action = "block" if not relief else "review"
-            reason = "context agent found direct violent intent"
+            reason = "发现明确暴力意图"
         elif violence:
             labels.append("violence")
             evidence.append(violence)
             score = 0.82 if not relief else 0.58
             risk_level = "medium"
             action = "review"
-            reason = "context agent found violent wording that needs review"
+            reason = "发现疑似暴力表述，需人工复核"
 
         if ad:
             labels.append("ad")
@@ -117,14 +117,14 @@ class SmallAgent:
             score = max(score, 0.78)
             risk_level = self._max_risk(risk_level, "medium")
             action = self._max_action(action, "review")
-            reason = "context agent found traffic diversion or advertising pattern"
+            reason = "发现疑似广告引流模式"
         elif fraud:
             labels.append("fraud")
             evidence.append(fraud)
             score = max(score, 0.7)
             risk_level = self._max_risk(risk_level, "medium")
             action = self._max_action(action, "review")
-            reason = "context agent found fraud-like earning promise"
+            reason = "发现疑似诈骗收益承诺"
 
         labels = list(dict.fromkeys(labels))
         return AgentResult(

@@ -132,13 +132,15 @@
 
 ### 简要响应
 
-文字、图片和视频审核接口默认开启简要响应，只返回业务标识、审核结果和原因：
+文字、图片和视频审核接口默认开启简要响应，返回业务标识、审核结果、风险等级和原因：
 
 ```json
 {
   "content_id": "content_001",
   "result": "review",
-  "reason": "命中规则 violence:杀人；风险标签 violence"
+  "action": "review",
+  "risk_level": "medium",
+  "reason": "命中规则 violence:杀人；风险标签 暴力风险"
 }
 ```
 

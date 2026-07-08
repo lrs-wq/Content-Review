@@ -27,7 +27,9 @@
 {
   "content_id": "content_001",
   "result": "review",
-  "reason": "命中规则 ad:联系方式；风险标签 ad"
+  "action": "review",
+  "risk_level": "medium",
+  "reason": "命中规则 ad:联系方式；风险标签 广告引流风险"
 }
 ```
 
@@ -37,6 +39,8 @@
 {
   "content_id": "content_001",
   "result": "block",
+  "action": "block",
+  "risk_level": "high",
   "reason": "原因 疑似低俗口头语内容；命中词 八嘎(1-3)；标签 inappropriate_oral；置信度 100"
 }
 ```
@@ -47,6 +51,8 @@
 |---|---|---|
 | `content_id` | string | 业务内容 ID |
 | `result` | string | 审核结果：`allow`、`review`、`block`，图片接口可能返回 `mask` |
+| `action` | string | 与 `result` 相同，便于前端和审核台统一读取 |
+| `risk_level` | string | 风险等级：`none`、`low`、`medium`、`high` |
 | `reason` | string | 简短原因 |
 
 结果含义：
@@ -182,6 +188,8 @@ curl -X POST "http://39.106.120.253:8010/v1/moderation/text" \
 {
   "content_id": "text_10001",
   "result": "allow",
+  "action": "allow",
+  "risk_level": "none",
   "reason": "未命中风险规则，模型综合风险较低"
 }
 ```
@@ -241,6 +249,8 @@ curl -X POST "http://39.106.120.253:8020/v1/moderation/image/upload" \
 {
   "content_id": "img_10001",
   "result": "review",
+  "action": "review",
+  "risk_level": "medium",
   "reason": "视觉命中 image_too_small(0.45)/metadata；风险标签 image_too_small"
 }
 ```
@@ -334,6 +344,8 @@ curl -X POST "http://39.106.120.253:8030/v1/moderation/video/upload" \
 {
   "content_id": "video_10001",
   "result": "review",
+  "action": "review",
+  "risk_level": "medium",
   "reason": "证据 text:ad(0.75)；聚合文本审核 ad；风险标签 video_text_sensitive,ad"
 }
 ```

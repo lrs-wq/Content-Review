@@ -132,6 +132,8 @@ class BriefModerationResponse(BaseModel):
 
     content_id: str
     result: Action
+    action: Action
+    risk_level: RiskLevel
     reason: str
 
 

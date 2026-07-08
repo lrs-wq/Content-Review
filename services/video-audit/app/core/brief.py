@@ -26,6 +26,8 @@ def to_brief_response(response: VideoModerationResponse) -> BriefModerationRespo
     return BriefModerationResponse(
         content_id=response.content_id,
         result=response.action,
+        action=response.action,
+        risk_level=response.risk_level,
         reason=_reason(response),
     )
 

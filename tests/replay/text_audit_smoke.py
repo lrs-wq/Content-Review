@@ -119,6 +119,27 @@ def main() -> None:
                     f"{case['content_id']} expected hits={expected_hits}, got {actual_hits}"
                 )
 
+    brief_response = client.post(
+        "/v1/moderation/text",
+        json={
+            "content_id": "brief_agent_violence_case",
+            "user_id": "u8",
+            "scene": "comment",
+            "text": "\u6740\u5154\u5b50\u507f\u547d juj...",
+        },
+    )
+    brief_response.raise_for_status()
+    brief_body = brief_response.json()
+    print(json.dumps(brief_body, ensure_ascii=False))
+    if brief_body["result"] != "block" or brief_body["action"] != "block":
+        raise SystemExit(f"brief response expected block, got {brief_body}")
+    if brief_body["risk_level"] != "high":
+        raise SystemExit(f"brief response expected high risk, got {brief_body}")
+    if "context agent found" in brief_body["reason"]:
+        raise SystemExit(f"brief reason leaked internal English reason: {brief_body['reason']}")
+    if "暴力风险" not in brief_body["reason"]:
+        raise SystemExit(f"brief reason missing translated violence label: {brief_body['reason']}")
+
 
 if __name__ == "__main__":
     main()
