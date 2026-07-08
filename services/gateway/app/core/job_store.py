@@ -1,4 +1,4 @@
-"""File-backed async moderation job storage shared by 8040 submit and 8041 query."""
+"""File-backed async moderation job storage for same-port submit and polling APIs."""
 
 from __future__ import annotations
 

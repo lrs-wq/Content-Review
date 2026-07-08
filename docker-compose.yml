@@ -108,7 +108,6 @@ services:
       GATEWAY_REQUEST_TIMEOUT_SECONDS: "300"
       GATEWAY_HEALTH_TIMEOUT_SECONDS: "2"
       GATEWAY_PORT: "8040"
-      GATEWAY_RESULT_PORT: "8041"
       GATEWAY_ASYNC_JOB_DIR: "/app/storage/moderation-jobs"
     ports:
       - "8040:8040"
@@ -119,26 +118,3 @@ services:
       - image-audit-service
       - video-audit-service
     command: uvicorn app.main:app --host 0.0.0.0 --port 8040
-
-  gateway-result-service:
-    build:
-      context: ./services/gateway
-    container_name: content-review-gateway-result
-    environment:
-      POLICY_VERSION: "2026.06.24"
-      GATEWAY_TEXT_AUDIT_URL: "http://text-audit-service:8010/v1/moderation/text"
-      GATEWAY_IMAGE_AUDIT_JSON_URL: "http://image-audit-service:8020/v1/moderation/image"
-      GATEWAY_IMAGE_AUDIT_UPLOAD_URL: "http://image-audit-service:8020/v1/moderation/image/upload"
-      GATEWAY_VIDEO_AUDIT_UPLOAD_URL: "http://video-audit-service:8030/v1/moderation/video/upload"
-      GATEWAY_REQUEST_TIMEOUT_SECONDS: "300"
-      GATEWAY_HEALTH_TIMEOUT_SECONDS: "2"
-      GATEWAY_PORT: "8041"
-      GATEWAY_RESULT_PORT: "8041"
-      GATEWAY_ASYNC_JOB_DIR: "/app/storage/moderation-jobs"
-    ports:
-      - "8041:8041"
-    volumes:
-      - ./storage/moderation-jobs:/app/storage/moderation-jobs
-    depends_on:
-      - gateway-service
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8041

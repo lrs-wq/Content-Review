@@ -325,10 +325,10 @@ def _job_response(content_id: str) -> JSONResponse:
 
 
 def _result_url(request: Request, content_id: str) -> str:
-    """Build the polling URL for a submitted async job."""
+    """Build the same-port polling URL for a submitted async job."""
 
-    host = request.url.hostname or "127.0.0.1"
-    return f"{request.url.scheme}://{host}:{get_settings().result_port}/v1/moderation/result/{content_id}"
+    base_url = str(request.base_url).rstrip("/")
+    return f"{base_url}/v1/moderation/result/{content_id}"
 
 
 async def _parse_request(request: Request) -> ParsedPayload:

@@ -2,7 +2,7 @@
 <!--
   Manual content-review test page.
   It is intentionally static. By default it submits to the async gateway on 8040
-  and polls the result API on 8041. Direct calls to 8010/8020/8030 are kept as a
+  and polls the result API on the same 8040 port. Direct calls to 8010/8020/8030 are kept as a
   fallback for service-level debugging.
 -->
 <html lang="zh-CN">
@@ -361,7 +361,7 @@
 
         <div class="check-row">
           <input id="asyncMode" type="checkbox" checked />
-          <label for="asyncMode">8040 异步提交 + 8041 轮询</label>
+          <label for="asyncMode">8040 异步提交 + 同端口轮询</label>
         </div>
 
         <div id="asyncSettings" class="endpoint-grid">
@@ -371,7 +371,7 @@
           </div>
           <div>
             <label for="pollApiUrl">轮询查询接口</label>
-            <input id="pollApiUrl" placeholder="http://当前主机:8041/v1/moderation/result" />
+            <input id="pollApiUrl" placeholder="http://当前主机:8040/v1/moderation/result" />
           </div>
         </div>
 
@@ -605,7 +605,7 @@
       // Keep service URLs aligned with the host used to open the test page. This lets the same
       // page work from localhost and from the LAN address, such as 192.168.1.200.
       asyncApiUrl.value = `${window.location.protocol}//${host}:8040/v1/moderation/async`;
-      pollApiUrl.value = `${window.location.protocol}//${host}:8041/v1/moderation/result`;
+      pollApiUrl.value = `${window.location.protocol}//${host}:8040/v1/moderation/result`;
       textApiUrl.value = `${window.location.protocol}//${host}:8010/v1/moderation/text`;
       imageApiUrl.value = `${window.location.protocol}//${host}:8020/v1/moderation/image/upload`;
       videoApiUrl.value = `${window.location.protocol}//${host}:8030/v1/moderation/video/upload`;

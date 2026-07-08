@@ -232,8 +232,8 @@ def main() -> None:
     result_body = result_response.json()
     if result_body["status"] != "completed" or result_body["result"]["content_id"] != async_body["content_id"]:
         raise SystemExit(f"async polling result unexpected: {result_body}")
-    if ":8041/" not in async_body["result_url"]:
-        raise SystemExit(f"async result_url should use 8041: {async_body['result_url']}")
+    if ":8041/" in async_body["result_url"] or "/v1/moderation/result/" not in async_body["result_url"]:
+        raise SystemExit(f"async result_url should use same gateway port: {async_body['result_url']}")
 
 
 if __name__ == "__main__":
