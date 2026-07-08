@@ -31,6 +31,16 @@
 }
 ```
 
+如果下游接入阿里云敏感词审核，默认简短响应会把阿里云命中的风险原因整理到 `reason`：
+
+```json
+{
+  "content_id": "content_001",
+  "result": "block",
+  "reason": "原因 疑似低俗口头语内容；命中词 八嘎(1-3)；标签 inappropriate_oral；置信度 100"
+}
+```
+
 字段说明：
 
 | 字段 | 类型 | 说明 |
@@ -107,7 +117,7 @@ curl -X POST "http://39.106.120.253:8040/v1/moderation" \
   -F "content_id=img_10001" \
   -F "user_id=u_123" \
   -F "scene=post_image" \
-  -F "skip_ocr=true" \
+  -F "skip_ocr=false" \
   -F "context={}" \
   -F "file=@./sample.jpg"
 ```
@@ -220,7 +230,7 @@ curl -X POST "http://39.106.120.253:8020/v1/moderation/image/upload" \
   -F "scene=post_image" \
   -F "related_text=图片相关正文" \
   -F "provided_ocr_text=" \
-  -F "skip_ocr=true" \
+  -F "skip_ocr=false" \
   -F "context={}" \
   -F "file=@./sample.jpg"
 ```
@@ -269,7 +279,7 @@ curl -X POST "http://39.106.120.253:8020/v1/moderation/image" \
     "scene": "post_image",
     "image_url": "https://example.com/image.jpg",
     "related_text": "",
-    "skip_ocr": true,
+    "skip_ocr": false,
     "context": {}
   }'
 ```

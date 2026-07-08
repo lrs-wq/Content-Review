@@ -25,11 +25,11 @@ class VideoDecisionMaker:
         self,
         frame_results: list[FrameAuditPayload],
         text_review: TextReviewPayload,
-        asr_used: bool,
+        asr_has_text: bool,
     ) -> VideoDecision:
         """Apply conservative fusion: any block signal blocks the whole video."""
 
-        labels = self._labels(frame_results, text_review, asr_used)
+        labels = self._labels(frame_results, text_review, asr_has_text)
         evidence = self._evidence(frame_results, text_review)
 
         # Overall score is the strongest signal from either the frame path or the text path. Ratios
@@ -64,7 +64,7 @@ class VideoDecisionMaker:
         return VideoDecision(action="allow", risk_level="none", labels=labels, scores=scores, evidence=evidence)
 
     @staticmethod
-    def _labels(frame_results: list[FrameAuditPayload], text_review: TextReviewPayload, asr_used: bool) -> list[str]:
+    def _labels(frame_results: list[FrameAuditPayload], text_review: TextReviewPayload, asr_has_text: bool) -> list[str]:
         """Collect unique labels while adding video-level rollup labels."""
 
         labels: list[str] = []
@@ -75,7 +75,7 @@ class VideoDecisionMaker:
         if text_review.used and text_review.action in {"review", "block"}:
             labels.append("video_text_sensitive")
             labels.extend(text_review.labels)
-        if asr_used and text_review.action in {"review", "block"} and "video_asr_sensitive" not in labels:
+        if asr_has_text and text_review.action in {"review", "block"} and "video_asr_sensitive" not in labels:
             labels.append("video_asr_sensitive")
         return list(dict.fromkeys(label for label in labels if label))
 
@@ -96,7 +96,7 @@ class VideoDecisionMaker:
                     score=float(frame.scores.get("overall", 0.0)),
                     source="image-audit-service",
                     timestamp_seconds=frame.timestamp_seconds,
-                    text=(frame.ocr_text or "")[:200] or None,
+                    text=_frame_evidence_text(frame),
                 )
             )
         if text_review.used and text_review.action in {"review", "block"}:
@@ -108,9 +108,40 @@ class VideoDecisionMaker:
                     risk_level=text_review.risk_level,
                     score=text_review.score,
                     source="text-audit-service",
-                    text=text_review.error,
+                    text=_compact_text_evidence(text_review.evidence) or text_review.error,
                 )
             )
         # Limit evidence volume in the synchronous response. A future async/manual-review pipeline
         # can store full evidence separately.
         return evidence[:20]
+
+
+def _compact_text_evidence(values: list[str]) -> str | None:
+    """Return a short deduplicated evidence string suitable for brief responses."""
+
+    cleaned = [str(value).strip() for value in values if str(value).strip()]
+    if not cleaned:
+        return None
+    return "、".join(list(dict.fromkeys(cleaned))[:5])
+
+
+def _frame_evidence_text(frame: FrameAuditPayload) -> str | None:
+    """Prefer matched text evidence, then explain frame audit failures, then raw OCR fallback."""
+
+    text_evidence = _compact_text_evidence(frame.text_evidence)
+    if text_evidence:
+        return text_evidence
+    if frame.error:
+        return _friendly_frame_error(frame.error)
+    return (frame.ocr_text or "")[:200] or None
+
+
+def _friendly_frame_error(error: str) -> str:
+    """Turn transport errors into a short business-facing explanation."""
+
+    lowered = error.lower()
+    if "timed out" in lowered or "timeout" in lowered or "readtimeout" in lowered:
+        return "图片帧审核服务超时，未完成OCR/视觉审核"
+    if "connection" in lowered or "connect" in lowered:
+        return "图片帧审核服务连接失败，未完成OCR/视觉审核"
+    return str(error)[:120]

@@ -648,7 +648,8 @@ configs/political_terms.csv
 
 - 领导人姓名、别名、谐音、简称、拼音缩写单独维护。
 - 机构名、职务名、重大公共事件、监管阶段性要求单独维护。
-- 默认策略建议使用 `political / high / review`，先进入人工复核，不建议一律直接 `block`。
+- 领导人姓名、别名、简称和常见称谓默认使用 `political / high / block`，直接拦截。
+- 机构名、职务名、重大事件、地区公共议题默认仍使用 `review`，进入人工复核。
 - 新闻、历史、政策解读、法律讨论、官方公告等内容应通过白名单和上下文策略降低误杀。
 - 每次词库更新必须记录版本、来源、变更人和回滚点。
 
@@ -656,7 +657,7 @@ configs/political_terms.csv
 
 ```csv
 term,category,risk_level,match_type,action,enabled,notes
-领导人姓名占位,political,high,compact,review,true,replace with maintained leader names and aliases
+领导人姓名占位,political,high,compact,block,true,replace with maintained leader names and aliases
 ```
 
 服务启动时会同时加载：
@@ -790,7 +791,7 @@ curl -X POST http://localhost:8040/v1/moderation \
   -F "content_type=image" \
   -F "content_id=img1" \
   -F "user_id=u1" \
-  -F "skip_ocr=true" \
+  -F "skip_ocr=false" \
   -F "context={}" \
   -F "file=@./sample.jpg"
 ```

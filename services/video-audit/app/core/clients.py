@@ -124,6 +124,7 @@ class ImageAuditClient:
             trace_id=body.get("trace_id"),
             ocr_text=str(ocr.get("text", "")),
             ocr_lines=list(ocr.get("lines", [])) if isinstance(ocr.get("lines"), list) else [],
+            text_evidence=_frame_text_evidence(body),
             ocr_attempted=not skip_ocr,
             ocr_reason=ocr_reason,
             detections=detections,
@@ -186,6 +187,7 @@ class TextAuditClient:
                 risk_level=str(body.get("risk_level", "none")),
                 labels=list(body.get("labels", [])),
                 score=float(body.get("scores", {}).get("overall", 0.0)),
+                evidence=_extract_text_evidence(body),
                 trace_id=body.get("trace_id"),
             )
         except Exception as exc:
@@ -200,3 +202,38 @@ class TextAuditClient:
                 score=0.65,
                 error=str(exc),
             )
+
+
+def _frame_text_evidence(body: dict[str, Any]) -> list[str]:
+    """Extract concise OCR text evidence returned by image-audit-service."""
+
+    text_review = body.get("text_review")
+    if not isinstance(text_review, dict):
+        return []
+    evidence = text_review.get("evidence", [])
+    if not isinstance(evidence, list):
+        return []
+    return list(dict.fromkeys(str(item).strip() for item in evidence if str(item).strip()))[:10]
+
+
+def _extract_text_evidence(body: dict[str, Any]) -> list[str]:
+    """Keep only matched terms from text-audit-service for compact video reasons."""
+
+    evidence: list[str] = []
+    hits = body.get("hits", [])
+    if isinstance(hits, list):
+        for hit in hits:
+            if not isinstance(hit, dict):
+                continue
+            term = str(hit.get("term") or "").strip()
+            if term:
+                evidence.append(term)
+
+    agent_review = body.get("agent_review")
+    if isinstance(agent_review, dict):
+        for item in agent_review.get("evidence", []):
+            text = str(item or "").strip()
+            if text:
+                evidence.append(text)
+
+    return list(dict.fromkeys(evidence))[:10]

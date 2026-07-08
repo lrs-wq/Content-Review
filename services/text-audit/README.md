@@ -77,7 +77,7 @@ python ../../tools/train_text_classifier.py
 ../../configs/political_terms.csv
 ```
 
-默认动作建议是 `political/high/review`，由人工复核兜底，避免新闻、历史和政策讨论被直接误封。
+领导人姓名、别名和常见称谓默认动作是 `political/high/block`，直接拦截。机构名、职务名、重大事件、地区公共议题等仍建议使用 `review`，由人工复核兜底，避免新闻、历史和政策讨论被直接误封。
 
 公开词库可以从 `fwwdn/sensitive-stop-words` 导入：
 

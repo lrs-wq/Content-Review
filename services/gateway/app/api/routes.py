@@ -11,6 +11,7 @@ from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import JSONResponse
 from starlette.datastructures import UploadFile as StarletteUploadFile
 
+from app.core.aliyun_brief import to_aliyun_brief
 from app.core.client import ForwardedResponse, GatewayClient
 from app.core.config import get_settings
 from app.core.errors import GatewayError
@@ -84,7 +85,7 @@ async def moderate(
         forwarded = await _forward_video(client, payload, use_brief)
     else:
         raise GatewayError(400, "unsupported_content_type", f"unsupported content_type: {content_type}")
-    return _response(forwarded)
+    return _response(forwarded, content_id=_first_scalar(payload.fields.get("content_id")), brief=use_brief)
 
 
 async def _forward_image(client: GatewayClient, payload: "ParsedPayload", brief: bool) -> ForwardedResponse:
@@ -359,7 +360,11 @@ def _to_bool(value: Any, default: bool) -> bool:
     return raw.strip().lower() in {"1", "true", "yes", "on"}
 
 
-def _response(forwarded: ForwardedResponse) -> JSONResponse:
+def _response(forwarded: ForwardedResponse, content_id: str | None, brief: bool) -> JSONResponse:
     """Return downstream JSON without wrapping so callers see the final moderation result."""
 
+    if brief:
+        aliyun_brief = to_aliyun_brief(forwarded.body, content_id)
+        if aliyun_brief is not None:
+            return JSONResponse(status_code=forwarded.status_code, content=aliyun_brief)
     return JSONResponse(status_code=forwarded.status_code, content=forwarded.body)

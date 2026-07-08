@@ -52,7 +52,7 @@ curl -X POST "http://127.0.0.1:8040/v1/moderation" \
   -F "content_id=img1" \
   -F "user_id=u1" \
   -F "scene=post_image" \
-  -F "skip_ocr=true" \
+  -F "skip_ocr=false" \
   -F "context={}" \
   -F "file=@./sample.jpg"
 ```

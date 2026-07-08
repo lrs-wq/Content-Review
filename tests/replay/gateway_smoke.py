@@ -27,6 +27,35 @@ class FakeGatewayClient:
 
     async def post_json(self, url: str, payload: dict[str, Any], brief: bool) -> ForwardedResponse:
         self.calls.append({"kind": "json", "url": url, "payload": payload, "brief": brief})
+        if payload["content_id"] == "aliyun_case":
+            return ForwardedResponse(
+                status_code=200,
+                body={
+                    "statusCode": 200,
+                    "body": json.dumps(
+                        {
+                            "code": 200,
+                            "data": {
+                                "result": [
+                                    {
+                                        "confidence": 100,
+                                        "description": "疑似低俗口头语内容",
+                                        "label": "inappropriate_oral",
+                                        "riskPositions": [
+                                            {"endPos": 3, "riskWord": "八嘎", "startPos": 1},
+                                        ],
+                                        "riskWords": "八嘎",
+                                    }
+                                ],
+                                "riskLevel": "high",
+                            },
+                            "message": "OK",
+                            "requestId": "019F3BEB-6F42-5B03-B93D-7E1BA21EDD51",
+                        },
+                        ensure_ascii=False,
+                    ),
+                },
+            )
         return ForwardedResponse(
             status_code=200,
             body={
@@ -114,8 +143,21 @@ def main() -> None:
     )
     video_response.raise_for_status()
 
+    aliyun_response = client.post(
+        "/v1/moderation",
+        json={
+            "content_type": "text",
+            "content_id": "aliyun_case",
+            "user_id": "u1",
+            "scene": "comment",
+            "text": "八嘎",
+            "context": {},
+        },
+    )
+    aliyun_response.raise_for_status()
+
     summary = {
-        "responses": [text_response.json(), image_response.json(), video_response.json()],
+        "responses": [text_response.json(), image_response.json(), video_response.json(), aliyun_response.json()],
         "calls": fake.calls,
     }
     print(json.dumps(summary, ensure_ascii=False, indent=2))
@@ -126,6 +168,15 @@ def main() -> None:
         raise SystemExit("image upload did not honor brief=false")
     if fake.calls[2]["content_type"] != "video/mp4":
         raise SystemExit("video upload did not route as video multipart")
+    aliyun_body = aliyun_response.json()
+    if aliyun_body["result"] != "block":
+        raise SystemExit(f"aliyun high risk expected block, got {aliyun_body['result']}")
+    for expected in ("原因 疑似低俗口头语内容", "命中词 八嘎", "标签 inappropriate_oral", "置信度 100"):
+        if expected not in aliyun_body["reason"]:
+            raise SystemExit(f"aliyun reason missing {expected}: {aliyun_body['reason']}")
+    for removed in ("阿里云敏感词审核未通过", "风险等级 high"):
+        if removed in aliyun_body["reason"]:
+            raise SystemExit(f"aliyun reason should not include {removed}: {aliyun_body['reason']}")
 
 
 if __name__ == "__main__":

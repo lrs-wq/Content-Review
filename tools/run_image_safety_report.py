@@ -565,7 +565,7 @@ def main() -> None:
     parser.add_argument("--seed", type=int, default=20260625)
     parser.add_argument("--timeout", type=float, default=60.0)
     parser.add_argument("--refresh", action="store_true")
-    parser.add_argument("--skip-ocr", action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument("--skip-ocr", action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument("--hf-token", default=None)
     parser.add_argument("--hf-token-file", default=None)
     parser.add_argument("--include-c4censor", action=argparse.BooleanOptionalAction, default=True)

@@ -166,7 +166,7 @@ class VideoAuditor:
         )
 
         # Fuse frame-level visual risks and video-level text risks into one final action.
-        decision = self.decider.decide(frame_results, text_review, asr_result.used)
+        decision = self.decider.decide(frame_results, text_review, bool(asr_result.text.strip()))
 
         return VideoModerationResponse(
             trace_id=self._trace_id(),

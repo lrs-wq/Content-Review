@@ -1,57 +1,57 @@
 term,category,risk_level,match_type,action,enabled,notes
 政治敏感占位词,political,high,compact,review,true,placeholder for China political sensitive terms
-领导人姓名占位,political,high,compact,review,true,replace or extend with maintained leader names and aliases
+领导人姓名占位,political,high,compact,block,true,replace or extend with maintained leader names and aliases
 政治谣言,political,high,compact,review,true,public affairs rumor example
 涉政敏感,political,high,compact,review,true,generic political sensitivity example
-习近平,political,high,compact,review,true,current top leader name
-习主席,political,high,compact,review,true,current top leader title alias
-习总书记,political,high,compact,review,true,current top leader title alias
-习近平主席,political,high,compact,review,true,current top leader title
-习近平总书记,political,high,compact,review,true,current top leader title
-李强,political,high,compact,review,true,current central leader name
-赵乐际,political,high,compact,review,true,current central leader name
-王沪宁,political,high,compact,review,true,current central leader name
-蔡奇,political,high,compact,review,true,current central leader name
-丁薛祥,political,high,compact,review,true,current central leader name
-李希,political,high,compact,review,true,current central leader name
-韩正,political,high,compact,review,true,current state leader name
-马兴瑞,political,high,compact,review,true,current politburo member name
-王毅,political,high,compact,review,true,current politburo member name
-尹力,political,high,compact,review,true,current politburo member name
-石泰峰,political,high,compact,review,true,current politburo member name
-刘国中,political,high,compact,review,true,current politburo member name
-李干杰,political,high,compact,review,true,current politburo member name
-李书磊,political,high,compact,review,true,current politburo member name
-李鸿忠,political,high,compact,review,true,current politburo member name
-何立峰,political,high,compact,review,true,current politburo member name
-张又侠,political,high,compact,review,true,current politburo member name
-张国清,political,high,compact,review,true,current politburo member name
-陈文清,political,high,compact,review,true,current politburo member name
-陈吉宁,political,high,compact,review,true,current politburo member name
-陈敏尔,political,high,compact,review,true,current politburo member name
-袁家军,political,high,compact,review,true,current politburo member name
-黄坤明,political,high,compact,review,true,current politburo member name
-刘金国,political,high,compact,review,true,current secretariat member name
-王小洪,political,high,compact,review,true,current secretariat/state councillor name
-张升民,political,high,compact,review,true,current central military commission name
-刘振立,political,high,compact,review,true,current central military commission name
-吴政隆,political,high,compact,review,true,current state council official name
-谌贻琴,political,high,compact,review,true,current state councillor name
-毛泽东,political,high,compact,review,true,historical top leader name
-周恩来,political,high,compact,review,true,historical state leader name
-刘少奇,political,high,compact,review,true,historical state leader name
-朱德,political,high,compact,review,true,historical state leader name
-邓小平,political,high,compact,review,true,historical top leader name
-陈云,political,high,compact,review,true,historical senior leader name
-江泽民,political,high,compact,review,true,former top leader name
-胡锦涛,political,high,compact,review,true,former top leader name
-胡耀邦,political,high,compact,review,true,former senior leader name
-赵紫阳,political,high,compact,review,true,former senior leader name
-华国锋,political,high,compact,review,true,former senior leader name
-李鹏,political,high,compact,review,true,former state leader name
-朱镕基,political,high,compact,review,true,former state leader name
-温家宝,political,high,compact,review,true,former state leader name
-李克强,political,high,compact,review,true,former state leader name
+习近平,political,high,compact,block,true,current top leader name
+习主席,political,high,compact,block,true,current top leader title alias
+习总书记,political,high,compact,block,true,current top leader title alias
+习近平主席,political,high,compact,block,true,current top leader title
+习近平总书记,political,high,compact,block,true,current top leader title
+李强,political,high,compact,block,true,current central leader name
+赵乐际,political,high,compact,block,true,current central leader name
+王沪宁,political,high,compact,block,true,current central leader name
+蔡奇,political,high,compact,block,true,current central leader name
+丁薛祥,political,high,compact,block,true,current central leader name
+李希,political,high,compact,block,true,current central leader name
+韩正,political,high,compact,block,true,current state leader name
+马兴瑞,political,high,compact,block,true,current politburo member name
+王毅,political,high,compact,block,true,current politburo member name
+尹力,political,high,compact,block,true,current politburo member name
+石泰峰,political,high,compact,block,true,current politburo member name
+刘国中,political,high,compact,block,true,current politburo member name
+李干杰,political,high,compact,block,true,current politburo member name
+李书磊,political,high,compact,block,true,current politburo member name
+李鸿忠,political,high,compact,block,true,current politburo member name
+何立峰,political,high,compact,block,true,current politburo member name
+张又侠,political,high,compact,block,true,current politburo member name
+张国清,political,high,compact,block,true,current politburo member name
+陈文清,political,high,compact,block,true,current politburo member name
+陈吉宁,political,high,compact,block,true,current politburo member name
+陈敏尔,political,high,compact,block,true,current politburo member name
+袁家军,political,high,compact,block,true,current politburo member name
+黄坤明,political,high,compact,block,true,current politburo member name
+刘金国,political,high,compact,block,true,current secretariat member name
+王小洪,political,high,compact,block,true,current secretariat/state councillor name
+张升民,political,high,compact,block,true,current central military commission name
+刘振立,political,high,compact,block,true,current central military commission name
+吴政隆,political,high,compact,block,true,current state council official name
+谌贻琴,political,high,compact,block,true,current state councillor name
+毛泽东,political,high,compact,block,true,historical top leader name
+周恩来,political,high,compact,block,true,historical state leader name
+刘少奇,political,high,compact,block,true,historical state leader name
+朱德,political,high,compact,block,true,historical state leader name
+邓小平,political,high,compact,block,true,historical top leader name
+陈云,political,high,compact,block,true,historical senior leader name
+江泽民,political,high,compact,block,true,former top leader name
+胡锦涛,political,high,compact,block,true,former top leader name
+胡耀邦,political,high,compact,block,true,former senior leader name
+赵紫阳,political,high,compact,block,true,former senior leader name
+华国锋,political,high,compact,block,true,former senior leader name
+李鹏,political,high,compact,block,true,former state leader name
+朱镕基,political,high,compact,block,true,former state leader name
+温家宝,political,high,compact,block,true,former state leader name
+李克强,political,high,compact,block,true,former state leader name
 中国共产党,political,medium,compact,review,true,party institution
 中共中央,political,medium,compact,review,true,party institution
 党中央,political,medium,compact,review,true,party institution

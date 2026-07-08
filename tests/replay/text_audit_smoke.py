@@ -84,6 +84,13 @@ def main() -> None:
             "text": "\u8fd9\u662f\u4e00\u6761\u6d89\u653f\u654f\u611f\u5185\u5bb9",
             "expected_action": "review",
         },
+        {
+            "content_id": "political_leader_name_block_case",
+            "user_id": "u7",
+            "scene": "comment",
+            "text": "\u6bdb\u6cfd\u4e1c \u4e60\u8fd1\u5e73",
+            "expected_action": "block",
+        },
     ]
 
     health = client.get("/health")

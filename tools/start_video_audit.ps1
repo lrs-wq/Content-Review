@@ -46,6 +46,10 @@ if (-not $env:HF_TOKEN -and (Test-Path $TokenPath)) {
 # orchestrator over ffprobe/ffmpeg, image-audit-service, ASR, and text-audit-service.
 $env:IMAGE_AUDIT_URL = "http://127.0.0.1:8020/v1/moderation/image/upload"
 $env:TEXT_AUDIT_URL = "http://127.0.0.1:8010/v1/moderation/text"
+# The first OCR frame can be slow after a cold image-audit start because PaddleOCR and multimodal
+# safety weights may still be warming up. A longer downstream timeout prevents false
+# frame_audit_error reviews during local testing.
+$env:VIDEO_AUDIT_IMAGE_AUDIT_TIMEOUT_SECONDS = "240"
 
 # The synchronous upload API is intentionally capped at 60 seconds and 60 sampled frames.
 $env:VIDEO_AUDIT_MAX_DURATION_SECONDS = "60"

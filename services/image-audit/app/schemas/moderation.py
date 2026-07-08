@@ -81,6 +81,7 @@ class TextReviewPayload(BaseModel):
     risk_level: str = "none"
     labels: list[str] = Field(default_factory=list)
     score: float = 0.0
+    evidence: list[str] = Field(default_factory=list)
     trace_id: str | None = None
     error: str | None = None
 

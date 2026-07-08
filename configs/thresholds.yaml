@@ -118,7 +118,9 @@ video:
     text_region_score: 0.35
     retry_on_qr_or_risk: true
   image_audit_url: "http://127.0.0.1:8020/v1/moderation/image/upload"
-  image_audit_timeout_seconds: 90.0
+  # Cold image-audit startup can load PaddleOCR, NSFW/NudeNet, and ShieldGemma2. Keep this higher
+  # than normal per-frame latency so selective OCR frames do not become frame_audit_error.
+  image_audit_timeout_seconds: 240.0
   text_audit_url: "http://127.0.0.1:8010/v1/moderation/text"
   text_audit_timeout_seconds: 10.0
   ffmpeg_path: "ffmpeg"
