@@ -76,7 +76,7 @@ class SmallAgent:
                 action="allow",
                 labels=[],
                 score=0.0,
-                reason="agent not triggered",
+                reason="上下文审查未触发",
                 evidence=[],
             )
 
@@ -87,7 +87,7 @@ class SmallAgent:
         score = 0.0
         action = "allow"
         risk_level = "none"
-        reason = "no additional context risk found"
+        reason = "上下文未发现额外风险"
 
         # Run the more specific threat pattern before the broad violence pattern so explicit
         # intent receives stronger action and evidence.

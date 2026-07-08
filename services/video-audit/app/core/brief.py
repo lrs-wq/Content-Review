@@ -16,7 +16,23 @@ LABEL_NAMES = {
     "nudity": "疑似裸露",
     "qr_code": "二维码/引流风险",
     "vision_safety": "多模态安全风险",
+    "vision_sexual": "多模态色情裸露风险",
+    "vision_violence_gore": "多模态暴力血腥风险",
+    "vision_dangerous": "多模态危险行为风险",
+    "vision_safety_unavailable": "多模态二审不可用",
     "frame_audit_error": "帧审核调用异常",
+    "ocr_text_unchecked": "OCR文本未完成审核",
+    "video_text_unchecked": "视频聚合文本未完成审核",
+    "adult": "成人低俗风险",
+    "ad": "广告引流风险",
+    "fraud": "诈骗风险",
+    "gambling": "赌博风险",
+    "violence": "暴力风险",
+    "offensive": "攻击辱骂风险",
+    "inappropriate_oral": "低俗口头语风险",
+    "safe": "低风险",
+    "normal": "低风险",
+    "unknown": "未知风险",
 }
 
 

@@ -14,6 +14,21 @@ LABEL_NAMES = {
     "qr_code": "二维码/引流风险",
     "image_quality": "图片质量异常",
     "vision_safety": "多模态安全风险",
+    "vision_sexual": "多模态色情裸露风险",
+    "vision_violence_gore": "多模态暴力血腥风险",
+    "vision_dangerous": "多模态危险行为风险",
+    "vision_safety_unavailable": "多模态二审不可用",
+    "ocr_text_unchecked": "OCR文本未完成审核",
+    "adult": "成人低俗风险",
+    "ad": "广告引流风险",
+    "fraud": "诈骗风险",
+    "gambling": "赌博风险",
+    "violence": "暴力风险",
+    "offensive": "攻击辱骂风险",
+    "inappropriate_oral": "低俗口头语风险",
+    "safe": "低风险",
+    "normal": "低风险",
+    "unknown": "未知风险",
 }
 
 SOURCE_NAMES = {
@@ -21,6 +36,8 @@ SOURCE_NAMES = {
     "falconsai": "NSFW模型",
     "nudenet": "裸露检测模型",
     "shieldgemma2": "多模态二审",
+    "shieldgemma2_local": "多模态二审",
+    "llama_guard4_openai": "多模态二审",
     "vision_safety": "多模态二审",
 }
 
@@ -103,6 +120,17 @@ def _evidence_text(value: str | None) -> str:
     prefix = "skin_like_pixel_ratio="
     if text.startswith(prefix):
         return f"疑似皮肤色区域占比 {text[len(prefix):]}"
+    lowered = text.lower()
+    if "sensitive political text" in lowered or "political text" in lowered:
+        return "截图中包含敏感政治文字"
+    if "sexual" in lowered or "nudity" in lowered or "nsfw" in lowered or "nude" in lowered:
+        return "图片疑似包含色情或裸露内容"
+    if "violence" in lowered or "gore" in lowered or "blood" in lowered:
+        return "图片疑似包含暴力或血腥内容"
+    if "dangerous" in lowered or "weapon" in lowered:
+        return "图片疑似包含危险行为或武器内容"
+    if "unavailable" in lowered or "timeout" in lowered or "timed out" in lowered:
+        return "多模态二审暂不可用，需人工复核"
     return text
 
 

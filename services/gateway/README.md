@@ -28,11 +28,16 @@ POST /v1/moderation
 
 ```json
 {
+  "client_elapsed_ms": 144.5,
   "content_id": "content_001",
   "result": "review",
-  "reason": "命中规则 ad:加微信；风险标签 ad"
+  "action": "review",
+  "risk_level": "medium",
+  "reason": "命中规则 广告引流风险:加微信；风险标签 广告引流风险"
 }
 ```
+
+返回规范：默认业务响应固定为 `content_id`、`result`、`action`、`risk_level`、`reason`；测试页展示时会额外补 `client_elapsed_ms`。`reason` 默认中文，原始文本证据保持原文。
 
 需要完整调试字段时加 `?brief=false`。
 
@@ -50,6 +55,9 @@ POST /v1/moderation/async
 {
   "content_id": "cr_20260708091230_ab12cd34ef",
   "status": "queued",
+  "status_label": "已排队",
+  "content_type": "text",
+  "content_type_label": "文本",
   "result_url": "http://127.0.0.1:8040/v1/moderation/result/cr_20260708091230_ab12cd34ef"
 }
 ```

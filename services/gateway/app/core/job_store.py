@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from app.core.config import get_settings
+from app.core.response_format import content_type_label, error_message, status_label
 
 
 TERMINAL_STATUSES = {"completed", "failed"}
@@ -32,7 +33,9 @@ class JobStore:
         record = {
             "content_id": content_id,
             "status": "queued",
+            "status_label": status_label("queued"),
             "content_type": content_type,
+            "content_type_label": content_type_label(content_type),
             "brief": brief,
             "created_at": now,
             "updated_at": now,
@@ -58,7 +61,15 @@ class JobStore:
     def mark_failed(self, content_id: str, error: str, detail: str, http_status: int = 500) -> None:
         """Store a terminal failure that occurred before a downstream result was available."""
 
-        self.update(content_id, status="failed", http_status=http_status, error=error, detail=detail)
+        message = error_message(error, detail)
+        self.update(
+            content_id,
+            status="failed",
+            http_status=http_status,
+            error=error,
+            message=message,
+            detail=message,
+        )
 
     def get(self, content_id: str) -> dict[str, Any] | None:
         """Read one job by content id, returning None when it is unknown."""
@@ -76,6 +87,10 @@ class JobStore:
             "created_at": utc_now(),
         }
         record.update(changes)
+        if "status" in record:
+            record["status_label"] = status_label(str(record["status"]))
+        if "content_type" in record:
+            record["content_type_label"] = content_type_label(str(record["content_type"]))
         record["updated_at"] = utc_now()
         self.write(record)
         return record

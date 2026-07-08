@@ -925,7 +925,16 @@
       }
 
       function isBriefResponse(response) {
-        return Boolean(response.result && response.reason && !response.action);
+        return Boolean(
+          response.result &&
+            response.action &&
+            response.risk_level &&
+            response.reason &&
+            !response.trace_id &&
+            !response.scores &&
+            !response.frame_results &&
+            !response.image,
+        );
       }
 
       function renderBriefMeta(response) {

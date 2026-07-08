@@ -47,7 +47,14 @@ def post_video(api_url: str, video_path: Path, timeout: float = 180.0) -> tuple[
     }
     with video_path.open("rb") as stream:
         files = {"file": (video_path.name, stream, "video/mp4")}
-        response = httpx.post(api_url, params={"brief": "false"}, data=data, files=files, timeout=timeout)
+        response = httpx.post(
+            api_url,
+            params={"brief": "false"},
+            data=data,
+            files=files,
+            timeout=timeout,
+            trust_env=False,
+        )
     return response.status_code, response.json()
 
 
@@ -80,10 +87,13 @@ def run_too_long_case(api_url: str, video_path: Path) -> dict[str, Any]:
     status_code, body = post_video(api_url, video_path, timeout=90)
     if status_code != 400 or body.get("error") != "video_too_long":
         raise SystemExit(f"too-long video expected video_too_long, got HTTP {status_code}: {body}")
+    if "60秒" not in str(body.get("detail", "")):
+        raise SystemExit(f"too-long video detail should be Chinese and mention 60 seconds: {body}")
     return {
         "case": "too_long_video",
         "http_status": status_code,
         "error": body.get("error"),
+        "message": body.get("message"),
         "detail": body.get("detail"),
     }
 

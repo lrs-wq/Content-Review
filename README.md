@@ -136,13 +136,16 @@
 
 ```json
 {
+  "client_elapsed_ms": 144.5,
   "content_id": "content_001",
   "result": "review",
   "action": "review",
   "risk_level": "medium",
-  "reason": "命中规则 violence:杀人；风险标签 暴力风险"
+  "reason": "命中规则 暴力风险:杀人；风险标签 暴力风险"
 }
 ```
+
+返回约定：默认业务响应固定为 `content_id`、`result`、`action`、`risk_level`、`reason`；测试页展示时会额外补 `client_elapsed_ms`。`result/action/risk_level` 保留英文机器码，`reason` 默认返回中文，用户原文、OCR 文本、ASR 文本、命中词和证据片段保留原文。完整调试响应 `brief=false` 才返回更多模型分数和证据字段。
 
 需要调试完整链路时传入 `brief=false`。JSON 接口可放在 query 或请求体中；multipart 上传接口使用 query，例如：
 

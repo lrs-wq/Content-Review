@@ -7,6 +7,7 @@ from fastapi.responses import JSONResponse
 from app.api.routes import router
 from app.core.config import get_settings
 from app.core.errors import GatewayError
+from app.core.response_format import error_message
 
 
 settings = get_settings()
@@ -33,10 +34,12 @@ app.include_router(router)
 def gateway_error_handler(_, exc: GatewayError) -> JSONResponse:
     """Expose gateway validation/forwarding errors as stable JSON responses."""
 
+    message = error_message(exc.error, exc.detail)
     return JSONResponse(
         status_code=exc.status_code,
         content={
             "error": exc.error,
-            "detail": exc.detail,
+            "message": message,
+            "detail": message,
         },
     )

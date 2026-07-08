@@ -21,13 +21,16 @@ docker compose up -d text-audit-service
 
 ```json
 {
+  "client_elapsed_ms": 144.5,
   "content_id": "c1",
   "result": "review",
   "action": "review",
   "risk_level": "medium",
-  "reason": "命中规则 ad:加微信；风险标签 广告引流风险"
+  "reason": "命中规则 广告引流风险:加微信；风险标签 广告引流风险"
 }
 ```
+
+简要响应中 `result/action/risk_level` 保留英文机器码，`reason` 返回中文原因；测试页展示时会额外补 `client_elapsed_ms`。完整响应还会返回 `labels_zh`、`trigger_reason_zh` 等调试辅助字段。
 
 需要完整调试字段时使用 `?brief=false`，也可以在 JSON 请求体中传入 `"brief": false`。
 

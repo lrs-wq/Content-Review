@@ -34,10 +34,31 @@ app.include_router(router)
 def image_load_error_handler(_, exc: ImageLoadError) -> JSONResponse:
     """Return image validation failures as structured API errors."""
 
+    image_error = str(exc)
+    message = _image_load_message(image_error)
     return JSONResponse(
         status_code=400,
         content={
-            "detail": str(exc),
             "error": "invalid_image",
+            "image_error": image_error.split(":", 1)[0],
+            "message": message,
+            "detail": message,
         },
     )
+
+
+def _image_load_message(error: str) -> str:
+    """Translate image loading errors into Chinese API messages."""
+
+    code = str(error).split(":", 1)[0]
+    messages = {
+        "image_too_large": "图片文件过大",
+        "image_empty": "图片文件为空",
+        "unsupported_image_format": "不支持的图片格式",
+        "invalid_image_dimensions": "图片尺寸无效",
+        "image_pixels_too_large": "图片像素过大",
+        "image_decode_failed": "图片解码失败",
+        "missing_image_source": "缺少图片来源",
+        "invalid_image_base64": "图片Base64内容无效",
+    }
+    return messages.get(code, "图片无法解析或不符合审核要求")

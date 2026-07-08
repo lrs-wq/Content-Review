@@ -60,7 +60,7 @@ class ImageAuditClient:
             # Use multipart upload to avoid base64 inflation and to match the manual web tester.
             with frame.path.open("rb") as stream:
                 files = {"file": (frame.path.name, stream, "image/jpeg")}
-                with httpx.Client(timeout=self.timeout) as client:
+                with httpx.Client(timeout=self.timeout, trust_env=False) as client:
                     response = client.post(self.url, params={"brief": "false"}, data=data, files=files)
                     response.raise_for_status()
                     body = response.json()
@@ -176,7 +176,7 @@ class TextAuditClient:
             },
         }
         try:
-            with httpx.Client(timeout=self.timeout) as client:
+            with httpx.Client(timeout=self.timeout, trust_env=False) as client:
                 response = client.post(self.url, params={"brief": "false"}, json=request_body)
                 response.raise_for_status()
                 body = response.json()

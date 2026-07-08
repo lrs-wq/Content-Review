@@ -29,7 +29,7 @@ class GatewayClient:
         """Forward a JSON moderation request and return the parsed JSON response."""
 
         try:
-            async with httpx.AsyncClient(timeout=self.settings.request_timeout_seconds) as client:
+            async with httpx.AsyncClient(timeout=self.settings.request_timeout_seconds, trust_env=False) as client:
                 response = await client.post(url, params={"brief": str(brief).lower()}, json=payload)
         except httpx.RequestError as exc:
             raise GatewayError(502, "downstream_unavailable", f"{url}: {exc}") from exc
@@ -48,7 +48,7 @@ class GatewayClient:
 
         files = {"file": (filename, file_bytes, content_type)}
         try:
-            async with httpx.AsyncClient(timeout=self.settings.request_timeout_seconds) as client:
+            async with httpx.AsyncClient(timeout=self.settings.request_timeout_seconds, trust_env=False) as client:
                 response = await client.post(
                     url,
                     params={"brief": str(brief).lower()},
@@ -68,7 +68,7 @@ class GatewayClient:
             "video": self.settings.video_audit_upload_url,
         }
         results: dict[str, Any] = {}
-        async with httpx.AsyncClient(timeout=self.settings.health_timeout_seconds) as client:
+        async with httpx.AsyncClient(timeout=self.settings.health_timeout_seconds, trust_env=False) as client:
             for name, url in services.items():
                 health_url = self._health_url(url)
                 try:

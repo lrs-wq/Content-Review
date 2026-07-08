@@ -11,11 +11,11 @@ from fastapi import APIRouter, BackgroundTasks, Depends, Query, Request
 from fastapi.responses import JSONResponse
 from starlette.datastructures import UploadFile as StarletteUploadFile
 
-from app.core.aliyun_brief import to_aliyun_brief
 from app.core.client import ForwardedResponse, GatewayClient
 from app.core.config import get_settings
 from app.core.errors import GatewayError
 from app.core.job_store import generate_content_id, get_job_store
+from app.core.response_format import content_type_label, status_label
 
 
 router = APIRouter()
@@ -51,6 +51,7 @@ async def health(client: GatewayClient = Depends(get_gateway_client)) -> dict[st
     downstream = await client.health()
     return {
         "status": "ok",
+        "status_label": status_label("ok"),
         "service": "content-review-gateway",
         "policy_version": settings.policy_version,
         "port": settings.port,
@@ -75,7 +76,7 @@ async def moderate(
     use_brief = _resolve_brief(brief, payload.fields)
     content_type = _resolve_content_type(payload.fields, payload.file)
     forwarded = await _forward_by_content_type(client, payload, content_type, use_brief)
-    return _response(forwarded, content_id=content_id, brief=use_brief)
+    return _response(forwarded, content_id=content_id)
 
 
 @router.post("/v1/moderation/async")
@@ -100,6 +101,9 @@ async def submit_moderation_async(
         content={
             "content_id": content_id,
             "status": "queued",
+            "status_label": status_label("queued"),
+            "content_type": content_type,
+            "content_type_label": content_type_label(content_type),
             "result_path": f"/v1/moderation/result/{content_id}",
             "result_url": _result_url(request, content_id),
         },
@@ -136,7 +140,7 @@ async def moderate_text_compat(
         _text_payload(payload.fields),
         use_brief,
     )
-    return _response(forwarded, content_id=content_id, brief=use_brief)
+    return _response(forwarded, content_id=content_id)
 
 
 @router.post("/v1/moderation/image")
@@ -152,7 +156,7 @@ async def moderate_image_compat(
     content_id = _ensure_content_id(payload.fields)
     use_brief = _resolve_brief(brief, payload.fields)
     forwarded = await _forward_image(client, payload, use_brief)
-    return _response(forwarded, content_id=content_id, brief=use_brief)
+    return _response(forwarded, content_id=content_id)
 
 
 @router.post("/v1/moderation/video/upload")
@@ -167,7 +171,7 @@ async def moderate_video_compat(
     content_id = _ensure_content_id(payload.fields)
     use_brief = _resolve_brief(brief, payload.fields)
     forwarded = await _forward_video(client, payload, use_brief)
-    return _response(forwarded, content_id=content_id, brief=use_brief)
+    return _response(forwarded, content_id=content_id)
 
 
 async def _forward_by_content_type(
@@ -204,7 +208,7 @@ async def _run_async_moderation(
     try:
         store.mark_processing(content_id)
         forwarded = await _forward_by_content_type(client, payload, content_type, brief)
-        store.mark_completed(content_id, forwarded.status_code, _response_body(forwarded, content_id, brief))
+        store.mark_completed(content_id, forwarded.status_code, _response_body(forwarded, content_id))
     except GatewayError as exc:
         store.mark_failed(content_id, exc.error, exc.detail, http_status=exc.status_code)
     except Exception as exc:  # pragma: no cover - defensive background boundary
@@ -318,6 +322,8 @@ def _job_response(content_id: str) -> JSONResponse:
             content={
                 "content_id": content_id,
                 "status": "not_found",
+                "status_label": status_label("not_found"),
+                "message": "未找到该 content_id 的审核任务",
                 "result": None,
             },
         )
@@ -574,19 +580,15 @@ def _to_bool(value: Any, default: bool) -> bool:
     return raw.strip().lower() in {"1", "true", "yes", "on"}
 
 
-def _response(forwarded: ForwardedResponse, content_id: str | None, brief: bool) -> JSONResponse:
+def _response(forwarded: ForwardedResponse, content_id: str | None) -> JSONResponse:
     """Return downstream JSON without wrapping so callers see the final moderation result."""
 
-    return JSONResponse(status_code=forwarded.status_code, content=_response_body(forwarded, content_id, brief))
+    return JSONResponse(status_code=forwarded.status_code, content=_response_body(forwarded, content_id))
 
 
-def _response_body(forwarded: ForwardedResponse, content_id: str | None, brief: bool) -> Any:
-    """Build the response body, including Aliyun brief normalization when applicable."""
+def _response_body(forwarded: ForwardedResponse, content_id: str | None) -> Any:
+    """Build the response body while preserving the downstream moderation shape."""
 
-    if brief:
-        aliyun_brief = to_aliyun_brief(forwarded.body, content_id)
-        if aliyun_brief is not None:
-            return aliyun_brief
     if isinstance(forwarded.body, dict) and content_id:
         body = dict(forwarded.body)
         body.setdefault("content_id", content_id)

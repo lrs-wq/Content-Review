@@ -70,7 +70,7 @@ async def moderate_video_upload(
         # the expensive file/probe/model work begins.
         parsed_context = json.loads(context)
         if not isinstance(parsed_context, dict):
-            raise HTTPException(status_code=400, detail="context must be a JSON object")
+            raise HTTPException(status_code=400, detail="上下文必须是 JSON 对象")
         context_payload = parsed_context
 
     suffix = Path(file.filename or "").suffix or ".video"
@@ -87,7 +87,7 @@ async def moderate_video_upload(
                     break
                 total_bytes += len(chunk)
                 if total_bytes > settings.max_video_bytes:
-                    raise HTTPException(status_code=413, detail="video_file_too_large")
+                    raise HTTPException(status_code=413, detail="视频文件过大")
                 temp_file.write(chunk)
 
         payload = VideoAuditInput(

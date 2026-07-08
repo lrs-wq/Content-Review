@@ -44,7 +44,7 @@ class TextAuditClient:
             },
         }
         try:
-            with httpx.Client(timeout=self.timeout) as client:
+            with httpx.Client(timeout=self.timeout, trust_env=False) as client:
                 response = client.post(self.url, params={"brief": "false"}, json=request_body)
                 response.raise_for_status()
                 body = response.json()

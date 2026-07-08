@@ -36,10 +36,32 @@ app.include_router(router)
 def video_audit_error_handler(_, exc: VideoAuditError) -> JSONResponse:
     """Expose domain errors as structured JSON instead of generic 500 responses."""
 
+    message = _video_error_message(exc.error)
     return JSONResponse(
         status_code=exc.status_code,
         content={
-            "detail": exc.detail,
             "error": exc.error,
+            "message": message,
+            "detail": message,
         },
     )
+
+
+def _video_error_message(error: str) -> str:
+    """Translate video audit domain errors into Chinese API messages."""
+
+    messages = {
+        "unsupported_video_type": "不支持的视频格式",
+        "empty_video": "视频文件为空",
+        "video_file_too_large": "视频文件过大",
+        "missing_video_stream": "未检测到视频画面流",
+        "invalid_video_duration": "视频时长无效",
+        "video_too_long": "视频超过60秒限制",
+        "ffprobe_not_found": "未找到 ffprobe",
+        "ffprobe_failed": "视频元数据解析失败",
+        "ffprobe_invalid_json": "视频元数据解析结果异常",
+        "ffmpeg_not_found": "未找到 ffmpeg",
+        "frame_sampling_failed": "视频抽帧失败",
+        "no_sampled_frames": "未抽取到可审核视频帧",
+    }
+    return messages.get(str(error), "视频审核失败")

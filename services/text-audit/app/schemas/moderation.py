@@ -4,11 +4,62 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, computed_field
 
 
 RiskLevel = Literal["none", "low", "medium", "high"]
 Action = Literal["allow", "review", "block"]
+
+ACTION_LABELS = {
+    "allow": "放行",
+    "review": "人工复核",
+    "block": "拦截",
+}
+
+RISK_LEVEL_LABELS = {
+    "none": "无风险",
+    "low": "低风险",
+    "medium": "中风险",
+    "high": "高风险",
+}
+
+LABEL_NAMES = {
+    "adult": "成人低俗风险",
+    "ad": "广告引流风险",
+    "fraud": "诈骗风险",
+    "gambling": "赌博风险",
+    "political": "涉政风险",
+    "violence": "暴力风险",
+    "weapon": "武器风险",
+    "insult": "攻击辱骂风险",
+    "offensive": "攻击辱骂风险",
+    "inappropriate_oral": "低俗口头语风险",
+    "safe": "低风险",
+    "normal": "低风险",
+    "unknown": "未知风险",
+}
+
+TRIGGER_REASON_NAMES = {
+    "gray_score": "综合分处于灰区",
+    "complex_context": "存在复杂上下文",
+    "suspicious_context_hint": "发现疑似风险语义线索",
+}
+
+
+def action_label(value: str) -> str:
+    return ACTION_LABELS.get(str(value), str(value))
+
+
+def risk_level_label(value: str) -> str:
+    return RISK_LEVEL_LABELS.get(str(value), str(value))
+
+
+def label_name(value: str) -> str:
+    return LABEL_NAMES.get(str(value), str(value))
+
+
+def trigger_reason_name(value: str) -> str:
+    return TRIGGER_REASON_NAMES.get(str(value), str(value))
 
 
 class TextModerationRequest(BaseModel):
@@ -36,6 +87,21 @@ class RuleHitPayload(BaseModel):
     score: float
     span: list[int] | None = None
 
+    @computed_field
+    @property
+    def category_label(self) -> str:
+        return label_name(self.category)
+
+    @computed_field
+    @property
+    def action_label(self) -> str:
+        return action_label(self.action)
+
+    @computed_field
+    @property
+    def risk_level_label(self) -> str:
+        return risk_level_label(self.risk_level)
+
 
 class AgentReviewPayload(BaseModel):
     """Gray-zone context review result from the lightweight agent layer."""
@@ -49,6 +115,26 @@ class AgentReviewPayload(BaseModel):
     reason: str
     evidence: list[str]
 
+    @computed_field
+    @property
+    def action_label(self) -> str:
+        return action_label(self.action)
+
+    @computed_field
+    @property
+    def risk_level_label(self) -> str:
+        return risk_level_label(self.risk_level)
+
+    @computed_field
+    @property
+    def labels_zh(self) -> list[str]:
+        return [label_name(label) for label in self.labels]
+
+    @computed_field
+    @property
+    def trigger_reason_zh(self) -> list[str]:
+        return [trigger_reason_name(reason) for reason in self.trigger_reason]
+
 
 class ClassifierReviewPayload(BaseModel):
     """Small classifier output normalized for API consumers."""
@@ -60,6 +146,21 @@ class ClassifierReviewPayload(BaseModel):
     risk_level: RiskLevel
     model_version: str
     error: str | None = None
+
+    @computed_field
+    @property
+    def label_zh(self) -> str:
+        return label_name(self.label)
+
+    @computed_field
+    @property
+    def action_label(self) -> str:
+        return action_label(self.action)
+
+    @computed_field
+    @property
+    def risk_level_label(self) -> str:
+        return risk_level_label(self.risk_level)
 
 
 class TextModerationResponse(BaseModel):
@@ -78,6 +179,21 @@ class TextModerationResponse(BaseModel):
     agent_review: AgentReviewPayload | None = None
     policy_version: str
     model_status: str
+
+    @computed_field
+    @property
+    def action_label(self) -> str:
+        return action_label(self.action)
+
+    @computed_field
+    @property
+    def risk_level_label(self) -> str:
+        return risk_level_label(self.risk_level)
+
+    @computed_field
+    @property
+    def labels_zh(self) -> list[str]:
+        return [label_name(label) for label in self.labels]
 
 
 class BriefModerationResponse(BaseModel):
@@ -99,3 +215,8 @@ class HealthResponse(BaseModel):
     model_status: str
     classifier_status: str
     agent_status: str
+
+    @computed_field
+    @property
+    def status_label(self) -> str:
+        return "正常" if self.status == "ok" else self.status

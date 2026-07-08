@@ -17,6 +17,8 @@ LABEL_NAMES = {
     "offensive": "攻击辱骂风险",
     "inappropriate_oral": "低俗口头语风险",
     "safe": "低风险",
+    "normal": "低风险",
+    "unknown": "未知风险",
 }
 
 AGENT_REASON_NAMES = {
@@ -26,6 +28,12 @@ AGENT_REASON_NAMES = {
     "context agent found fraud-like earning promise": "发现疑似诈骗收益承诺",
     "no additional context risk found": "上下文未发现额外风险",
     "agent not triggered": "上下文审查未触发",
+    "发现明确暴力意图": "发现明确暴力意图",
+    "发现疑似暴力表述，需人工复核": "发现疑似暴力表述，需人工复核",
+    "发现疑似广告引流模式": "发现疑似广告引流模式",
+    "发现疑似诈骗收益承诺": "发现疑似诈骗收益承诺",
+    "上下文未发现额外风险": "上下文未发现额外风险",
+    "上下文审查未触发": "上下文审查未触发",
 }
 
 
@@ -46,7 +54,7 @@ def _reason(response: TextModerationResponse) -> str:
 
     parts: list[str] = []
     if response.hits:
-        hit_text = "、".join(f"{hit.category}:{hit.term}" for hit in response.hits[:3])
+        hit_text = "、".join(f"{_label_name(hit.category)}:{hit.term}" for hit in response.hits[:3])
         parts.append(f"命中规则 {hit_text}")
     if response.classifier_review and response.classifier_review.action != "allow":
         classifier = response.classifier_review
