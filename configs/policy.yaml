@@ -26,6 +26,9 @@ risk_categories:
   insult:
     name: "insult_or_harassment"
     default_action: "review"
+  inappropriate_oral:
+    name: "vulgar_or_inappropriate_oral_expression"
+    default_action: "review"
   violence:
     name: "violence_or_threat"
     default_action: "review"

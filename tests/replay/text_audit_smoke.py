@@ -91,6 +91,42 @@ def main() -> None:
             "text": "\u6bdb\u6cfd\u4e1c \u4e60\u8fd1\u5e73",
             "expected_action": "block",
         },
+        {
+            "content_id": "oral_vulgar_prefixed_baka_case",
+            "user_id": "u8",
+            "scene": "comment",
+            "text": "你这个小八嘎",
+            "expected_action": "review",
+            "expected_risk_level": "high",
+            "expected_hits": ["小八嘎", "八嘎"],
+        },
+        {
+            "content_id": "oral_vulgar_kana_baka_case",
+            "user_id": "u9",
+            "scene": "comment",
+            "text": "ばか",
+            "expected_action": "review",
+            "expected_risk_level": "high",
+            "expected_hits": ["ばか"],
+        },
+        {
+            "content_id": "oral_vulgar_romanized_baka_case",
+            "user_id": "u10",
+            "scene": "comment",
+            "text": "baka",
+            "expected_action": "review",
+            "expected_risk_level": "high",
+            "expected_hits": ["baka"],
+        },
+        {
+            "content_id": "dirty_cnwords_curse_case",
+            "user_id": "u11",
+            "scene": "comment",
+            "text": "你真是傻逼",
+            "expected_action": "review",
+            "expected_risk_level": "high",
+            "expected_hits": ["傻逼"],
+        },
     ]
 
     health = client.get("/health")
@@ -99,6 +135,7 @@ def main() -> None:
 
     for case in cases:
         expected = case.pop("expected_action")
+        expected_risk_level = case.pop("expected_risk_level", None)
         expected_agent_used = case.pop("expected_agent_used", None)
         expected_hits = case.pop("expected_hits", None)
         response = client.post("/v1/moderation/text", params={"brief": "false"}, json=case)
@@ -107,6 +144,11 @@ def main() -> None:
         print(json.dumps(body, ensure_ascii=False))
         if body["action"] != expected:
             raise SystemExit(f"{case['content_id']} expected {expected}, got {body['action']}")
+        if expected_risk_level is not None and body["risk_level"] != expected_risk_level:
+            raise SystemExit(
+                f"{case['content_id']} expected risk_level={expected_risk_level}, "
+                f"got {body['risk_level']}"
+            )
         if expected_agent_used is not None and body["agent_review"]["used"] is not expected_agent_used:
             raise SystemExit(
                 f"{case['content_id']} expected agent_used={expected_agent_used}, "
@@ -139,6 +181,27 @@ def main() -> None:
         raise SystemExit(f"brief reason leaked internal English reason: {brief_body['reason']}")
     if "暴力风险" not in brief_body["reason"]:
         raise SystemExit(f"brief reason missing translated violence label: {brief_body['reason']}")
+
+    oral_brief_response = client.post(
+        "/v1/moderation/text",
+        json={
+            "content_id": "brief_oral_vulgar_case",
+            "user_id": "u12",
+            "scene": "comment",
+            "text": "小八嘎",
+        },
+    )
+    oral_brief_response.raise_for_status()
+    oral_brief_body = oral_brief_response.json()
+    print(json.dumps(oral_brief_body, ensure_ascii=False))
+    if oral_brief_body["result"] != "review":
+        raise SystemExit(f"brief oral vulgar response expected review, got {oral_brief_body}")
+    if oral_brief_body["risk_level"] != "high":
+        raise SystemExit(f"brief oral vulgar response expected high risk, got {oral_brief_body}")
+    if "小八嘎" not in oral_brief_body["reason"]:
+        raise SystemExit(f"brief oral vulgar reason missing hit term: {oral_brief_body['reason']}")
+    if "低俗口头语风险" not in oral_brief_body["reason"]:
+        raise SystemExit(f"brief oral vulgar reason missing translated label: {oral_brief_body['reason']}")
 
 
 if __name__ == "__main__":

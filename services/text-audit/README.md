@@ -93,6 +93,28 @@ python ../../tools/import_fwwdn_terms.py --refresh
 ../../configs/fwwdn_terms.csv
 ```
 
+辱骂/低俗口头语可从 `dablelv/dirty-cnwords` 的 `curse/all.txt` 导入：
+
+```bash
+python ../../tools/import_dirty_cnwords_curse_terms.py --refresh
+```
+
+生成的词库默认会随服务启动加载：
+
+```text
+../../configs/dirty_cnwords_curse_terms.csv
+```
+
+本项目还维护了一份自有低俗口头语变体词库，用于覆盖 `小八嘎`、`baka`、`ばか` 等前后缀、假名和罗马音变体：
+
+```text
+../../configs/oral_vulgar_terms.csv
+```
+
+低俗口头语和导入的辱骂词默认使用 `high/review`，表示高风险但先进入复核，不直接拦截。
+
+注意：`dirty-cnwords` 抓取时未发现明确 LICENSE 文件，上线或对外分发前需要确认授权；导入内容已独立成 CSV，便于替换、禁用或回滚。
+
 默认只启用规则和启发式语义判断。需要加载 `thu-coai/roberta-base-cold` 时，安装 `requirements-model.txt` 并设置：
 
 ```bash

@@ -1,6 +1,6 @@
-# Gateway Service
+﻿# Gateway Service
 
-统一审核入口，默认端口 `8040`。它不加载审核模型，只负责把文本、图片、视频请求路由到现有服务：
+统一审核入口，默认端口 `8040`。它不加载审核模型，只负责把文本、图片、视频请求路由到现有服务。另有 `8041` 用于查询异步审核结果：
 
 - 文本：`text-audit-service:8010`
 - 图片：`image-audit-service:8020`
@@ -10,6 +10,7 @@
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File tools/start_gateway.ps1
+powershell -ExecutionPolicy Bypass -File tools/start_gateway_result_api.ps1
 ```
 
 Docker Compose：
@@ -35,6 +36,32 @@ POST /v1/moderation
 ```
 
 需要完整调试字段时加 `?brief=false`。
+
+`content_id` 可以不传；不传时网关会生成并返回。
+
+异步提交：
+
+```http
+POST /v1/moderation/async
+```
+
+返回：
+
+```json
+{
+  "content_id": "cr_20260708091230_ab12cd34ef",
+  "status": "queued",
+  "result_url": "http://127.0.0.1:8041/v1/moderation/result/cr_20260708091230_ab12cd34ef"
+}
+```
+
+查询：
+
+```http
+GET http://127.0.0.1:8041/v1/moderation/result/{content_id}
+```
+
+`status` 为 `completed` 时，`result` 字段就是最终审核结果。
 
 ### Text JSON
 

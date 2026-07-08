@@ -12,12 +12,15 @@ class Settings:
     """Runtime settings resolved from environment variables."""
 
     policy_version: str
+    port: int
+    result_port: int
     text_audit_url: str
     image_audit_json_url: str
     image_audit_upload_url: str
     video_audit_upload_url: str
     request_timeout_seconds: float
     health_timeout_seconds: float
+    async_job_dir: str
 
 
 def _env(name: str, default: str) -> str:
@@ -33,6 +36,8 @@ def get_settings() -> Settings:
 
     return Settings(
         policy_version=_env("POLICY_VERSION", "2026.06.24"),
+        port=int(_env("GATEWAY_PORT", "8040")),
+        result_port=int(_env("GATEWAY_RESULT_PORT", "8041")),
         text_audit_url=_env("GATEWAY_TEXT_AUDIT_URL", "http://127.0.0.1:8010/v1/moderation/text"),
         image_audit_json_url=_env("GATEWAY_IMAGE_AUDIT_JSON_URL", "http://127.0.0.1:8020/v1/moderation/image"),
         image_audit_upload_url=_env(
@@ -45,4 +50,5 @@ def get_settings() -> Settings:
         ),
         request_timeout_seconds=float(_env("GATEWAY_REQUEST_TIMEOUT_SECONDS", "300")),
         health_timeout_seconds=float(_env("GATEWAY_HEALTH_TIMEOUT_SECONDS", "2")),
+        async_job_dir=_env("GATEWAY_ASYNC_JOB_DIR", "storage/moderation-jobs"),
     )

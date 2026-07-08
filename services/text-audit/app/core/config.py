@@ -26,6 +26,8 @@ class Settings:
     sensitive_terms_path: Path
     political_terms_path: Path
     fwwdn_terms_path: Path
+    dirty_cnwords_curse_terms_path: Path
+    oral_vulgar_terms_path: Path
     term_paths: tuple[Path, ...]
     allow_terms_path: Path
     thresholds_path: Path
@@ -73,6 +75,12 @@ def get_settings() -> Settings:
     fwwdn_terms_path = Path(
         os.getenv("FWWDN_TERMS_PATH", config_dir / "fwwdn_terms.csv")
     ).resolve()
+    dirty_cnwords_curse_terms_path = Path(
+        os.getenv("DIRTY_CNWORDS_CURSE_TERMS_PATH", config_dir / "dirty_cnwords_curse_terms.csv")
+    ).resolve()
+    oral_vulgar_terms_path = Path(
+        os.getenv("ORAL_VULGAR_TERMS_PATH", config_dir / "oral_vulgar_terms.csv")
+    ).resolve()
     # Extra term files allow emergency/business-specific dictionaries without editing the base
     # repository CSVs.
     extra_term_paths = tuple(
@@ -88,7 +96,16 @@ def get_settings() -> Settings:
         sensitive_terms_path=sensitive_terms_path,
         political_terms_path=political_terms_path,
         fwwdn_terms_path=fwwdn_terms_path,
-        term_paths=(sensitive_terms_path, political_terms_path, fwwdn_terms_path, *extra_term_paths),
+        dirty_cnwords_curse_terms_path=dirty_cnwords_curse_terms_path,
+        oral_vulgar_terms_path=oral_vulgar_terms_path,
+        term_paths=(
+            sensitive_terms_path,
+            political_terms_path,
+            fwwdn_terms_path,
+            dirty_cnwords_curse_terms_path,
+            oral_vulgar_terms_path,
+            *extra_term_paths,
+        ),
         allow_terms_path=Path(os.getenv("ALLOW_TERMS_PATH", config_dir / "allow_terms.csv")).resolve(),
         thresholds_path=thresholds_path,
         enable_model=_env_bool(

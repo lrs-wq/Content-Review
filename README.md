@@ -90,7 +90,7 @@
   |-- POST /v1/moderation/image
   |-- POST /v1/moderation/video
   |
-审核网关 audit-gateway（已落地；默认端口 8040，统一转发文本/图片/视频审核）
+审核网关 audit-gateway（已落地；默认端口 8040，统一转发文本/图片/视频审核；8041 查询异步结果）
   |
   |-- text-audit-service
   |     |-- 文本归一化
@@ -125,6 +125,7 @@
 | 服务 | 默认端口 | 运行方式 | 说明 |
 |---|---:|---|---|
 | audit-gateway | 8040 | API 网关，已落地 | 统一文本、图片、视频入口，按 `content_type` 或文件 MIME 转发到 8010/8020/8030 |
+| audit-result-api | 8041 | 结果查询，已落地 | 查询 `POST /v1/moderation/async` 返回的 `content_id` 审核状态和结果 |
 | text-audit-service | 8010 | 独立服务 | 可用 Java/Spring Boot 集成 houbb，也可封装为 HTTP 规则服务 |
 | image-audit-service | 8020 | 独立服务 | 推荐 Python/FastAPI，便于加载 OCR 和视觉模型 |
 | video-audit-service | 8030 | 独立服务 | 推荐 Python/FastAPI + 异步任务队列 |
@@ -668,6 +669,8 @@ term,category,risk_level,match_type,action,enabled,notes
 configs/sensitive_terms.csv
 configs/political_terms.csv
 configs/fwwdn_terms.csv
+configs/dirty_cnwords_curse_terms.csv
+configs/oral_vulgar_terms.csv
 ```
 
 如需加载更多垂直词库，可设置环境变量：
@@ -719,6 +722,26 @@ python tools/import_fwwdn_terms.py --refresh
 storage/reports/fwwdn_terms_import_latest.json
 ```
 
+辱骂/低俗口头语可从 [dablelv/dirty-cnwords](https://github.com/dablelv/dirty-cnwords) 的 `curse/all.txt` 导入。该仓库未在抓取时发现明确 LICENSE 文件，上线或对外分发前需要再确认授权；本项目把导入内容单独放在独立 CSV，方便替换、禁用或回滚：
+
+```bash
+python tools/import_dirty_cnwords_curse_terms.py --refresh
+```
+
+生成的词库默认会随服务启动加载：
+
+```text
+configs/dirty_cnwords_curse_terms.csv
+```
+
+项目还维护了一份自有低俗口头语变体词库，用于覆盖 `小八嘎`、`baka`、`ばか` 等前后缀、假名和罗马音变体：
+
+```text
+configs/oral_vulgar_terms.csv
+```
+
+低俗口头语和导入的辱骂词默认使用 `high/review`，表示高风险但先进入复核，不直接拦截。
+
 审核日志必须记录：
 
 - 请求 ID、内容 ID、用户 ID、场景。
@@ -741,6 +764,8 @@ mkdir -p models configs storage/samples storage/frames storage/reports
 - `configs/sensitive_terms.csv`：敏感词、广告词、黑产词、导流词。
 - `configs/fwwdn_terms.csv`：从 fwwdn/sensitive-stop-words 导入的公开词库。
 - `configs/political_terms.csv`：中国场景政治敏感词库。
+- `configs/dirty_cnwords_curse_terms.csv`：从 dablelv/dirty-cnwords 导入的辱骂低俗词库。
+- `configs/oral_vulgar_terms.csv`：本项目维护的低俗口头语和变体词库。
 - `configs/allow_terms.csv`：白名单词。
 - `configs/policy.yaml`：风险标签和处置策略。
 - `configs/thresholds.yaml`：各模型阈值。
@@ -774,6 +799,7 @@ powershell -ExecutionPolicy Bypass -File tools\start_video_audit.ps1
 
 ```bash
 powershell -ExecutionPolicy Bypass -File tools\start_gateway.ps1
+powershell -ExecutionPolicy Bypass -File tools\start_gateway_result_api.ps1
 ```
 
 ### 3. 接口调用示例
@@ -785,6 +811,22 @@ curl -X POST http://localhost:8040/v1/moderation \
   -H "Content-Type: application/json" \
   -d '{"content_type":"text","content_id":"c1","user_id":"u1","scene":"comment","text":"待审核文本","context":{}}'
 ```
+
+`content_id` 可以不传；不传时 8040 会自动生成并在响应中返回。
+
+异步提交接口会立即返回 `content_id`，客户端再轮询 8041：
+
+```bash
+curl -X POST http://localhost:8040/v1/moderation/async \
+  -H "Content-Type: application/json" \
+  -d '{"content_type":"text","user_id":"u1","scene":"comment","text":"待审核文本","context":{}}'
+```
+
+```bash
+curl http://localhost:8041/v1/moderation/result/{content_id}
+```
+
+轮询返回 `queued`、`processing`、`completed`、`failed` 或 `not_found`；`completed` 时 `result` 字段就是最终审核结果。
 
 图片和视频也走同一个路径，通过 `content_type` 或上传文件 MIME 自动识别：
 
@@ -843,7 +885,7 @@ curl -X POST http://localhost:8030/v1/moderation/video/upload \
 
 ### 4. 可视化内容审核测试台
 
-项目内置一个轻量测试页，可以测试文本、图片、视频三类接口：文本支持图片 OCR/视频 ASR 上下文，图片支持文件上传和已有 OCR 文本，视频支持文件上传、已有 ASR 文本和强制跳过帧 OCR。
+项目内置一个轻量测试页，可以测试文本、图片、视频三类接口：文本支持图片 OCR/视频 ASR 上下文，图片支持文件上传和已有 OCR 文本，视频支持文件上传、已有 ASR 文本和强制跳过帧 OCR。测试页默认使用 `8040` 异步提交和 `8041` 轮询查询，会分别展示立即返回和最终轮询返回；取消异步模式后可直连 `8010/8020/8030` 做单服务调试。
 
 ```bash
 python tools/text-audit-ui/serve.py --host 0.0.0.0 --port 8050
@@ -935,7 +977,7 @@ storage/reports/image_safety_report_latest.json
 | text-audit-service | 2-4 核 | 可选 | 敏感词 CPU 足够，文本模型可用小 GPU 加速 |
 | image-audit-service | 4-8 核 | 推荐 | NSFW、NudeNet、OCR 对 GPU 更友好 |
 | video-audit-service | 4-8 核 | 推荐 | 抽帧 CPU 可跑，批量帧审核和 ASR 建议 GPU |
-| audit-gateway | 2 核 | 不需要 | 已落地 8040 统一入口，转发到 text/image/video 审核服务 |
+| audit-gateway | 2 核 | 不需要 | 已落地 8040 统一入口，转发到 text/image/video 审核服务；8041 查询异步结果 |
 
 ## 样本回流和持续优化
 

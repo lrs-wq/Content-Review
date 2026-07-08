@@ -22,6 +22,9 @@ $env:GATEWAY_IMAGE_AUDIT_UPLOAD_URL = "http://127.0.0.1:8020/v1/moderation/image
 $env:GATEWAY_VIDEO_AUDIT_UPLOAD_URL = "http://127.0.0.1:8030/v1/moderation/video/upload"
 $env:GATEWAY_REQUEST_TIMEOUT_SECONDS = "300"
 $env:GATEWAY_HEALTH_TIMEOUT_SECONDS = "2"
+$env:GATEWAY_PORT = "8040"
+$env:GATEWAY_RESULT_PORT = "8041"
+$env:GATEWAY_ASYNC_JOB_DIR = Join-Path $ProjectRoot "storage\moderation-jobs"
 
 Start-Process `
   -FilePath $Python `

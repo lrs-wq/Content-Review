@@ -13,7 +13,9 @@ LABEL_NAMES = {
     "political": "涉政风险",
     "violence": "暴力风险",
     "weapon": "武器风险",
+    "insult": "攻击辱骂风险",
     "offensive": "攻击辱骂风险",
+    "inappropriate_oral": "低俗口头语风险",
     "safe": "低风险",
 }
 

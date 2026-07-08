@@ -1,8 +1,9 @@
 <!doctype html>
 <!--
   Manual content-review test page.
-  It is intentionally static and calls the three local services directly:
-  text-audit-service:8010, image-audit-service:8020, video-audit-service:8030.
+  It is intentionally static. By default it submits to the async gateway on 8040
+  and polls the result API on 8041. Direct calls to 8010/8020/8030 are kept as a
+  fallback for service-level debugging.
 -->
 <html lang="zh-CN">
   <head>
@@ -152,6 +153,17 @@
         margin: 0;
       }
 
+      .endpoint-grid,
+      .result-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+      }
+
+      .endpoint-grid {
+        margin-bottom: 14px;
+      }
+
       .preview {
         display: grid;
         place-items: center;
@@ -271,6 +283,22 @@
         background: #fffcf5;
       }
 
+      .result-grid {
+        margin-bottom: 14px;
+      }
+
+      .result-block .name {
+        margin: 0 0 8px;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      .result-block pre {
+        min-height: 142px;
+        max-height: 32vh;
+      }
+
       pre {
         overflow: auto;
         max-height: 58vh;
@@ -301,6 +329,11 @@
         .status-grid {
           grid-template-columns: repeat(2, minmax(0, 1fr));
         }
+
+        .endpoint-grid,
+        .result-grid {
+          grid-template-columns: 1fr;
+        }
       }
 
       @media (max-width: 520px) {
@@ -326,9 +359,27 @@
           <button class="tab" type="button" data-tab="video">视频审核</button>
         </div>
 
+        <div class="check-row">
+          <input id="asyncMode" type="checkbox" checked />
+          <label for="asyncMode">8040 异步提交 + 8041 轮询</label>
+        </div>
+
+        <div id="asyncSettings" class="endpoint-grid">
+          <div>
+            <label for="asyncApiUrl">异步提交接口</label>
+            <input id="asyncApiUrl" placeholder="http://当前主机:8040/v1/moderation/async" />
+          </div>
+          <div>
+            <label for="pollApiUrl">轮询查询接口</label>
+            <input id="pollApiUrl" placeholder="http://当前主机:8041/v1/moderation/result" />
+          </div>
+        </div>
+
         <section id="textPanel" class="mode-section active">
-          <label for="textApiUrl">文本审核接口</label>
-          <input id="textApiUrl" placeholder="http://当前主机:8010/v1/moderation/text" />
+          <div data-direct-field>
+            <label for="textApiUrl">直连文本审核接口</label>
+            <input id="textApiUrl" placeholder="http://当前主机:8010/v1/moderation/text" />
+          </div>
 
           <label for="text">待审核文本</label>
           <textarea id="text">杀兔子偿命 juj...</textarea>
@@ -354,8 +405,10 @@
         </section>
 
         <section id="imagePanel" class="mode-section">
-          <label for="imageApiUrl">图片审核接口</label>
-          <input id="imageApiUrl" placeholder="http://当前主机:8020/v1/moderation/image/upload" />
+          <div data-direct-field>
+            <label for="imageApiUrl">直连图片审核接口</label>
+            <input id="imageApiUrl" placeholder="http://当前主机:8020/v1/moderation/image/upload" />
+          </div>
 
           <div class="row">
             <div>
@@ -402,8 +455,10 @@
         </section>
 
         <section id="videoPanel" class="mode-section">
-          <label for="videoApiUrl">视频审核接口</label>
-          <input id="videoApiUrl" placeholder="http://当前主机:8030/v1/moderation/video/upload" />
+          <div data-direct-field>
+            <label for="videoApiUrl">直连视频审核接口</label>
+            <input id="videoApiUrl" placeholder="http://当前主机:8030/v1/moderation/video/upload" />
+          </div>
 
           <div class="row">
             <div>
@@ -475,7 +530,20 @@
         </div>
 
         <div class="chips" id="chips"></div>
-        <pre id="result">{}</pre>
+        <div class="result-grid">
+          <div class="result-block">
+            <div class="name">直接返回</div>
+            <pre id="submitResult">{}</pre>
+          </div>
+          <div class="result-block">
+            <div class="name">轮询返回</div>
+            <pre id="pollResult">{}</pre>
+          </div>
+        </div>
+        <div class="result-block">
+          <div class="name">最终结果</div>
+          <pre id="result">{}</pre>
+        </div>
       </section>
     </main>
 
@@ -483,6 +551,10 @@
       // Keep DOM lookups short because this page has no build step or frontend framework.
       const $ = (selector) => document.querySelector(selector);
 
+      const asyncMode = $("#asyncMode");
+      const asyncSettings = $("#asyncSettings");
+      const asyncApiUrl = $("#asyncApiUrl");
+      const pollApiUrl = $("#pollApiUrl");
       const textPanel = $("#textPanel");
       const imagePanel = $("#imagePanel");
       const videoPanel = $("#videoPanel");
@@ -515,6 +587,8 @@
       const clearImageBtn = $("#clearImageBtn");
       const clearVideoBtn = $("#clearVideoBtn");
       const error = $("#error");
+      const submitResult = $("#submitResult");
+      const pollResult = $("#pollResult");
       const result = $("#result");
       const actionValue = $("#actionValue");
       const riskValue = $("#riskValue");
@@ -530,11 +604,14 @@
       const host = window.location.hostname || "127.0.0.1";
       // Keep service URLs aligned with the host used to open the test page. This lets the same
       // page work from localhost and from the LAN address, such as 192.168.1.200.
+      asyncApiUrl.value = `${window.location.protocol}//${host}:8040/v1/moderation/async`;
+      pollApiUrl.value = `${window.location.protocol}//${host}:8041/v1/moderation/result`;
       textApiUrl.value = `${window.location.protocol}//${host}:8010/v1/moderation/text`;
       imageApiUrl.value = `${window.location.protocol}//${host}:8020/v1/moderation/image/upload`;
       videoApiUrl.value = `${window.location.protocol}//${host}:8030/v1/moderation/video/upload`;
 
       let previewObjectUrl = "";
+      let activePollToken = 0;
 
       function splitLines(value) {
         return value
@@ -607,6 +684,180 @@
         return form;
       }
 
+      function buildAsyncPayload(mode) {
+        // The async gateway can generate content_id. The test page leaves it empty here so the
+        // immediate response demonstrates the production client contract.
+        if (mode === "text") {
+          const payload = buildTextPayload();
+          delete payload.content_id;
+          payload.content_type = "text";
+          return payload;
+        }
+        if (mode === "image") {
+          const form = buildImagePayload();
+          form.delete("content_id");
+          form.set("content_type", "image");
+          return form;
+        }
+        if (mode === "video") {
+          const form = buildVideoPayload();
+          form.delete("content_id");
+          form.set("content_type", "video");
+          return form;
+        }
+        throw new Error(`未知审核类型: ${mode}`);
+      }
+
+      function buildPollUrl(contentId) {
+        const encodedId = encodeURIComponent(contentId);
+        const rawUrl = pollApiUrl.value.trim();
+        if (!rawUrl) {
+          throw new Error("请填写轮询查询接口");
+        }
+        if (rawUrl.includes("{content_id}")) {
+          return rawUrl.replaceAll("{content_id}", encodedId);
+        }
+        const baseUrl = rawUrl.replace(/\/+$/, "");
+        if (baseUrl.endsWith("/result")) {
+          return `${baseUrl}/${encodedId}`;
+        }
+        return `${baseUrl}?content_id=${encodedId}`;
+      }
+
+      function sleep(ms) {
+        return new Promise((resolve) => window.setTimeout(resolve, ms));
+      }
+
+      async function readJsonResponse(response) {
+        const rawText = await response.text();
+        if (!rawText) {
+          return {};
+        }
+        try {
+          return JSON.parse(rawText);
+        } catch {
+          return { raw: rawText };
+        }
+      }
+
+      function withElapsed(body, elapsedMs, fieldName = "client_elapsed_ms") {
+        return {
+          [fieldName]: Number(elapsedMs.toFixed(1)),
+          ...body,
+        };
+      }
+
+      function renderJson(element, body, elapsedMs, fieldName) {
+        const payload = typeof elapsedMs === "number" ? withElapsed(body, elapsedMs, fieldName) : body;
+        element.textContent = JSON.stringify(payload, null, 2);
+      }
+
+      function renderFinalResult(mode, response, elapsedMs) {
+        if (mode === "text") {
+          renderTextResult(response, elapsedMs);
+        } else if (mode === "image") {
+          renderImageResult(response, elapsedMs);
+        } else {
+          renderVideoResult(response, elapsedMs);
+        }
+      }
+
+      function renderQueued(contentId, elapsedMs) {
+        setValue(actionValue, "queued", "review");
+        setValue(riskValue, "-");
+        setValue(timeValue, `${elapsedMs.toFixed(1)} ms`);
+        metaNameA.textContent = "Content";
+        metaNameB.textContent = "Status";
+        metaNameC.textContent = "Poll";
+        setValue(metaValueA, contentId || "-");
+        setValue(metaValueB, "polling", "review");
+        setValue(metaValueC, "等待结果");
+        chips.innerHTML = "";
+        if (contentId) {
+          addChip(`content_id:${contentId}`, "review");
+        }
+        result.textContent = JSON.stringify({ content_id: contentId || "-", status: "polling" }, null, 2);
+      }
+
+      async function pollModerationResult(contentId, pollToken, startedAt) {
+        const maxAttempts = 360;
+        for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+          if (pollToken !== activePollToken) {
+            throw new Error("轮询已取消");
+          }
+
+          const pollStartedAt = performance.now();
+          const response = await fetch(buildPollUrl(contentId));
+          const pollElapsedMs = performance.now() - pollStartedAt;
+          const body = await readJsonResponse(response);
+          const displayBody = {
+            poll_elapsed_ms: Number(pollElapsedMs.toFixed(1)),
+            total_elapsed_ms: Number((performance.now() - startedAt).toFixed(1)),
+            attempt,
+            ...body,
+          };
+          pollResult.textContent = JSON.stringify(displayBody, null, 2);
+
+          if (!response.ok && response.status !== 404) {
+            throw new Error(JSON.stringify(body));
+          }
+          if (body.status === "completed") {
+            return body;
+          }
+          if (body.status === "failed") {
+            throw new Error(body.detail || JSON.stringify(body));
+          }
+          await sleep(1000);
+        }
+        throw new Error("轮询超时，请稍后用 content_id 手动查询");
+      }
+
+      async function submitAsyncAudit(mode, button) {
+        error.textContent = "";
+        activePollToken += 1;
+        const pollToken = activePollToken;
+        button.disabled = true;
+        const payload = buildAsyncPayload(mode);
+        const startedAt = performance.now();
+        try {
+          const fetchOptions =
+            payload instanceof FormData
+              ? { method: "POST", body: payload }
+              : {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json; charset=utf-8",
+                  },
+                  body: JSON.stringify(payload),
+                };
+          const response = await fetch(asyncApiUrl.value.trim(), fetchOptions);
+          const submitElapsedMs = performance.now() - startedAt;
+          const body = await readJsonResponse(response);
+          renderJson(submitResult, body, submitElapsedMs);
+          pollResult.textContent = JSON.stringify({ status: "polling", content_id: body.content_id || "-" }, null, 2);
+          if (!response.ok) {
+            throw new Error(JSON.stringify(body));
+          }
+          if (!body.content_id) {
+            throw new Error("异步提交接口未返回 content_id");
+          }
+
+          renderQueued(body.content_id, submitElapsedMs);
+          const pollBody = await pollModerationResult(body.content_id, pollToken, startedAt);
+          if (!pollBody.result) {
+            throw new Error(JSON.stringify(pollBody));
+          }
+          renderFinalResult(mode, pollBody.result, performance.now() - startedAt);
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          if (message !== "轮询已取消") {
+            error.textContent = message;
+          }
+        } finally {
+          button.disabled = false;
+        }
+      }
+
       function setValue(element, value, className) {
         element.className = `value ${className || ""}`.trim();
         element.textContent = value;
@@ -670,11 +921,7 @@
         setValue(riskValue, risk, action);
         setValue(timeValue, `${elapsedMs.toFixed(1)} ms`);
         renderChips(response);
-        result.textContent = JSON.stringify(
-          { client_elapsed_ms: Number(elapsedMs.toFixed(1)), ...response },
-          null,
-          2,
-        );
+        renderJson(result, response, elapsedMs);
       }
 
       function isBriefResponse(response) {
@@ -754,6 +1001,11 @@
       }
 
       async function submitTextAudit() {
+        if (asyncMode.checked) {
+          await submitAsyncAudit("text", submitTextBtn);
+          return;
+        }
+
         error.textContent = "";
         submitTextBtn.disabled = true;
         const payload = buildTextPayload();
@@ -767,7 +1019,9 @@
             body: JSON.stringify(payload),
           });
           const elapsedMs = performance.now() - startedAt;
-          const body = await response.json();
+          const body = await readJsonResponse(response);
+          renderJson(submitResult, body, elapsedMs);
+          pollResult.textContent = JSON.stringify({ status: "direct", reason: "未启用异步轮询" }, null, 2);
           if (!response.ok) {
             throw new Error(JSON.stringify(body));
           }
@@ -780,6 +1034,11 @@
       }
 
       async function submitImageAudit() {
+        if (asyncMode.checked) {
+          await submitAsyncAudit("image", submitImageBtn);
+          return;
+        }
+
         error.textContent = "";
         submitImageBtn.disabled = true;
         const payload = buildImagePayload();
@@ -790,7 +1049,9 @@
             body: payload,
           });
           const elapsedMs = performance.now() - startedAt;
-          const body = await response.json();
+          const body = await readJsonResponse(response);
+          renderJson(submitResult, body, elapsedMs);
+          pollResult.textContent = JSON.stringify({ status: "direct", reason: "未启用异步轮询" }, null, 2);
           if (!response.ok) {
             throw new Error(JSON.stringify(body));
           }
@@ -803,6 +1064,11 @@
       }
 
       async function submitVideoAudit() {
+        if (asyncMode.checked) {
+          await submitAsyncAudit("video", submitVideoBtn);
+          return;
+        }
+
         // A 60-second video can still take several seconds because it may sample many frames and
         // selectively call OCR. The button is disabled to prevent accidental duplicate uploads.
         error.textContent = "";
@@ -815,7 +1081,9 @@
             body: payload,
           });
           const elapsedMs = performance.now() - startedAt;
-          const body = await response.json();
+          const body = await readJsonResponse(response);
+          renderJson(submitResult, body, elapsedMs);
+          pollResult.textContent = JSON.stringify({ status: "direct", reason: "未启用异步轮询" }, null, 2);
           if (!response.ok) {
             throw new Error(JSON.stringify(body));
           }
@@ -828,7 +1096,10 @@
       }
 
       function clearResult() {
+        activePollToken += 1;
         error.textContent = "";
+        submitResult.textContent = "{}";
+        pollResult.textContent = "{}";
         result.textContent = "{}";
         chips.innerHTML = "";
         setValue(actionValue, "-");
@@ -840,6 +1111,15 @@
         setValue(metaValueA, "-");
         setValue(metaValueB, "-");
         setValue(metaValueC, "-");
+      }
+
+      function updateEndpointMode() {
+        const useAsync = asyncMode.checked;
+        asyncSettings.style.display = useAsync ? "grid" : "none";
+        for (const field of document.querySelectorAll("[data-direct-field]")) {
+          field.style.display = useAsync ? "none" : "";
+        }
+        clearResult();
       }
 
       function setActiveMode(mode) {
@@ -880,6 +1160,8 @@
       clearTextBtn.addEventListener("click", clearResult);
       clearImageBtn.addEventListener("click", clearResult);
       clearVideoBtn.addEventListener("click", clearResult);
+      asyncMode.addEventListener("change", updateEndpointMode);
+      updateEndpointMode();
     </script>
   </body>
 </html>
