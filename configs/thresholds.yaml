@@ -89,6 +89,7 @@ video:
   # Synchronous video upload contract: keep files short and bounded for local/API latency.
   max_video_bytes: 104857600
   max_duration_seconds: 60.0
+  download_timeout_seconds: 30.0
   allowed_extensions:
     - "mp4"
     - "mov"

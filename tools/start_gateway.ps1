@@ -19,6 +19,7 @@ foreach ($conn in $connections) {
 $env:GATEWAY_TEXT_AUDIT_URL = "http://127.0.0.1:8010/v1/moderation/text"
 $env:GATEWAY_IMAGE_AUDIT_JSON_URL = "http://127.0.0.1:8020/v1/moderation/image"
 $env:GATEWAY_IMAGE_AUDIT_UPLOAD_URL = "http://127.0.0.1:8020/v1/moderation/image/upload"
+$env:GATEWAY_VIDEO_AUDIT_JSON_URL = "http://127.0.0.1:8030/v1/moderation/video"
 $env:GATEWAY_VIDEO_AUDIT_UPLOAD_URL = "http://127.0.0.1:8030/v1/moderation/video/upload"
 $env:GATEWAY_REQUEST_TIMEOUT_SECONDS = "300"
 $env:GATEWAY_HEALTH_TIMEOUT_SECONDS = "2"

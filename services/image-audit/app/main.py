@@ -60,5 +60,7 @@ def _image_load_message(error: str) -> str:
         "image_decode_failed": "图片解码失败",
         "missing_image_source": "缺少图片来源",
         "invalid_image_base64": "图片Base64内容无效",
+        "invalid_image_url": "图片链接格式无效",
+        "image_download_failed": "图片链接下载失败",
     }
     return messages.get(code, "图片无法解析或不符合审核要求")

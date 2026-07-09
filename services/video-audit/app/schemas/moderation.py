@@ -151,6 +151,19 @@ class VideoMetadata(BaseModel):
     audio_codec: str | None = None
 
 
+class VideoModerationRequest(BaseModel):
+    """JSON request body for URL-based video moderation."""
+
+    content_id: str
+    user_id: str
+    scene: str = "general"
+    video_url: str
+    related_text: str | None = None
+    provided_asr_text: str | None = None
+    skip_ocr: bool = False
+    context: dict[str, Any] = Field(default_factory=dict)
+
+
 class FrameDetectionPayload(BaseModel):
     """Single visual detection returned by image-audit-service for a sampled frame."""
 

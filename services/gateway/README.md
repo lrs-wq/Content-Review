@@ -91,6 +91,22 @@ curl -X POST "http://127.0.0.1:8040/v1/moderation" \
   -F "file=@./sample.jpg"
 ```
 
+### Image URL
+
+```bash
+curl -X POST "http://127.0.0.1:8040/v1/moderation" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "content_type": "image",
+    "content_id": "img_url_1",
+    "user_id": "u1",
+    "scene": "post_image",
+    "image_url": "https://example.com/sample.jpg",
+    "skip_ocr": false,
+    "context": {}
+  }'
+```
+
 ### Video Upload
 
 ```bash
@@ -104,4 +120,20 @@ curl -X POST "http://127.0.0.1:8040/v1/moderation" \
   -F "file=@./sample.mp4"
 ```
 
-`content_type` 可省略：有 `text` 字段时自动识别文本；上传文件 MIME 为 `image/*` 或 `video/*` 时自动识别图片/视频。
+### Video URL
+
+```bash
+curl -X POST "http://127.0.0.1:8040/v1/moderation" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "content_type": "video",
+    "content_id": "video_url_1",
+    "user_id": "u1",
+    "scene": "post_video",
+    "video_url": "https://example.com/sample.mp4",
+    "skip_ocr": false,
+    "context": {}
+  }'
+```
+
+`content_type` 可省略：有 `text` 字段时自动识别文本；有 `image_base64`、`image_url` 时自动识别图片；有 `video_url` 或上传文件 MIME 为 `video/*` 时自动识别视频。

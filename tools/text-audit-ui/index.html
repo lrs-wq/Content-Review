@@ -427,6 +427,11 @@
             </div>
           </div>
 
+          <div>
+            <label for="imageUrl">图片链接</label>
+            <input id="imageUrl" placeholder="https://example.com/image.jpg" />
+          </div>
+
           <div class="preview">
             <img id="imagePreview" alt="待审核图片预览" />
             <span id="imagePreviewEmpty">未选择图片</span>
@@ -474,6 +479,11 @@
               <label for="videoFile">视频文件</label>
               <input id="videoFile" type="file" accept="video/*" />
             </div>
+          </div>
+
+          <div>
+            <label for="videoUrl">视频链接</label>
+            <input id="videoUrl" placeholder="https://example.com/video.mp4" />
           </div>
 
           <div class="compact">
@@ -568,6 +578,7 @@
       const textContextJson = $("#textContextJson");
       const imageScene = $("#imageScene");
       const imageFile = $("#imageFile");
+      const imageUrl = $("#imageUrl");
       const imagePreview = $("#imagePreview");
       const imagePreviewEmpty = $("#imagePreviewEmpty");
       const imageRelatedText = $("#imageRelatedText");
@@ -576,6 +587,7 @@
       const imageContextJson = $("#imageContextJson");
       const videoScene = $("#videoScene");
       const videoFile = $("#videoFile");
+      const videoUrl = $("#videoUrl");
       const videoRelatedText = $("#videoRelatedText");
       const providedAsrText = $("#providedAsrText");
       const videoSkipOcr = $("#videoSkipOcr");
@@ -647,40 +659,84 @@
 
       function buildImagePayload() {
         const file = imageFile.files && imageFile.files[0];
-        if (!file) {
-          throw new Error("请选择一张图片");
+        const url = imageUrl.value.trim();
+        if (!file && !url) {
+          throw new Error("请选择一张图片文件或填写图片链接");
+        }
+
+        const common = {
+          content_id: `ui_image_${Date.now()}`,
+          user_id: "ui_tester",
+          scene: imageScene.value,
+          related_text: imageRelatedText.value.trim(),
+          provided_ocr_text: providedOcrText.value.trim(),
+          skip_ocr: skipOcr.checked,
+          context: parseContext(imageContextJson.value),
+        };
+
+        if (!file && url && !imageApiUrl.value.trim().endsWith("/upload")) {
+          return {
+            ...common,
+            image_url: url,
+          };
         }
 
         const form = new FormData();
-        form.append("content_id", `ui_image_${Date.now()}`);
-        form.append("user_id", "ui_tester");
-        form.append("scene", imageScene.value);
-        form.append("related_text", imageRelatedText.value.trim());
-        form.append("provided_ocr_text", providedOcrText.value.trim());
-        form.append("skip_ocr", skipOcr.checked ? "true" : "false");
-        form.append("context", JSON.stringify(parseContext(imageContextJson.value)));
-        form.append("file", file, file.name);
+        form.append("content_id", common.content_id);
+        form.append("user_id", common.user_id);
+        form.append("scene", common.scene);
+        form.append("related_text", common.related_text);
+        form.append("provided_ocr_text", common.provided_ocr_text);
+        form.append("skip_ocr", common.skip_ocr ? "true" : "false");
+        form.append("context", JSON.stringify(common.context));
+        if (file) {
+          form.append("file", file, file.name);
+        } else {
+          form.append("image_url", url);
+        }
         return form;
       }
 
       function buildVideoPayload() {
-        // Video moderation uses multipart/form-data because the backend must pass a real file path
-        // to ffprobe/ffmpeg. The "skip_ocr" checkbox means "force skip"; when it is unchecked the
-        // backend still defaults to selective OCR instead of OCRing every sampled frame.
+        // Video moderation accepts either a local file upload or a remote video_url. File uploads
+        // stay multipart; URL requests can be sent as JSON unless the selected endpoint is the
+        // /upload compatibility endpoint, which also accepts video_url as a form field.
         const file = videoFile.files && videoFile.files[0];
-        if (!file) {
-          throw new Error("请选择一个视频");
+        const url = videoUrl.value.trim();
+        if (!file && !url) {
+          throw new Error("请选择一个视频文件或填写视频链接");
+        }
+
+        const common = {
+          content_id: `ui_video_${Date.now()}`,
+          user_id: "ui_tester",
+          scene: videoScene.value,
+          related_text: videoRelatedText.value.trim(),
+          provided_asr_text: providedAsrText.value.trim(),
+          skip_ocr: videoSkipOcr.checked,
+          context: parseContext(videoContextJson.value),
+        };
+
+        if (!file && url && !videoApiUrl.value.trim().endsWith("/upload")) {
+          return {
+            ...common,
+            video_url: url,
+          };
         }
 
         const form = new FormData();
-        form.append("content_id", `ui_video_${Date.now()}`);
-        form.append("user_id", "ui_tester");
-        form.append("scene", videoScene.value);
-        form.append("related_text", videoRelatedText.value.trim());
-        form.append("provided_asr_text", providedAsrText.value.trim());
-        form.append("skip_ocr", videoSkipOcr.checked ? "true" : "false");
-        form.append("context", JSON.stringify(parseContext(videoContextJson.value)));
-        form.append("file", file, file.name);
+        form.append("content_id", common.content_id);
+        form.append("user_id", common.user_id);
+        form.append("scene", common.scene);
+        form.append("related_text", common.related_text);
+        form.append("provided_asr_text", common.provided_asr_text);
+        form.append("skip_ocr", common.skip_ocr ? "true" : "false");
+        form.append("context", JSON.stringify(common.context));
+        if (file) {
+          form.append("file", file, file.name);
+        } else {
+          form.append("video_url", url);
+        }
         return form;
       }
 
@@ -694,16 +750,26 @@
           return payload;
         }
         if (mode === "image") {
-          const form = buildImagePayload();
-          form.delete("content_id");
-          form.set("content_type", "image");
-          return form;
+          const payload = buildImagePayload();
+          if (payload instanceof FormData) {
+            payload.delete("content_id");
+            payload.set("content_type", "image");
+            return payload;
+          }
+          delete payload.content_id;
+          payload.content_type = "image";
+          return payload;
         }
         if (mode === "video") {
-          const form = buildVideoPayload();
-          form.delete("content_id");
-          form.set("content_type", "video");
-          return form;
+          const payload = buildVideoPayload();
+          if (payload instanceof FormData) {
+            payload.delete("content_id");
+            payload.set("content_type", "video");
+            return payload;
+          }
+          delete payload.content_id;
+          payload.content_type = "video";
+          return payload;
         }
         throw new Error(`未知审核类型: ${mode}`);
       }
@@ -1053,10 +1119,14 @@
         const payload = buildImagePayload();
         const startedAt = performance.now();
         try {
-          const response = await fetch(imageApiUrl.value.trim(), {
+          const requestInit = {
             method: "POST",
-            body: payload,
-          });
+            body: payload instanceof FormData ? payload : JSON.stringify(payload),
+          };
+          if (!(payload instanceof FormData)) {
+            requestInit.headers = { "Content-Type": "application/json" };
+          }
+          const response = await fetch(imageApiUrl.value.trim(), requestInit);
           const elapsedMs = performance.now() - startedAt;
           const body = await readJsonResponse(response);
           renderJson(submitResult, body, elapsedMs);
@@ -1085,10 +1155,14 @@
         const payload = buildVideoPayload();
         const startedAt = performance.now();
         try {
-          const response = await fetch(videoApiUrl.value.trim(), {
+          const requestInit = {
             method: "POST",
-            body: payload,
-          });
+            body: payload instanceof FormData ? payload : JSON.stringify(payload),
+          };
+          if (!(payload instanceof FormData)) {
+            requestInit.headers = { "Content-Type": "application/json" };
+          }
+          const response = await fetch(videoApiUrl.value.trim(), requestInit);
           const elapsedMs = performance.now() - startedAt;
           const body = await readJsonResponse(response);
           renderJson(submitResult, body, elapsedMs);
@@ -1148,9 +1222,7 @@
           previewObjectUrl = "";
         }
         if (!file) {
-          imagePreview.removeAttribute("src");
-          imagePreview.style.display = "none";
-          imagePreviewEmpty.style.display = "inline";
+          updateImageUrlPreview();
           return;
         }
         previewObjectUrl = URL.createObjectURL(file);
@@ -1158,6 +1230,24 @@
         imagePreview.style.display = "block";
         imagePreviewEmpty.style.display = "none";
       });
+
+      function updateImageUrlPreview() {
+        const file = imageFile.files && imageFile.files[0];
+        const url = imageUrl.value.trim();
+        if (file || !url) {
+          if (!file) {
+            imagePreview.removeAttribute("src");
+            imagePreview.style.display = "none";
+            imagePreviewEmpty.style.display = "inline";
+          }
+          return;
+        }
+        imagePreview.src = url;
+        imagePreview.style.display = "block";
+        imagePreviewEmpty.style.display = "none";
+      }
+
+      imageUrl.addEventListener("input", updateImageUrlPreview);
 
       for (const tab of document.querySelectorAll(".tab")) {
         tab.addEventListener("click", () => setActiveMode(tab.dataset.tab));

@@ -235,19 +235,22 @@ async def _forward_image(client: GatewayClient, payload: "ParsedPayload", brief:
 
 
 async def _forward_video(client: GatewayClient, payload: "ParsedPayload", brief: bool) -> ForwardedResponse:
-    """Forward a video request to the upload endpoint."""
+    """Forward a video request as either multipart upload or JSON video_url."""
 
-    if not payload.file and not payload.stored_file_path:
-        raise GatewayError(400, "missing_video_file", "video moderation requires multipart file upload")
-    file_bytes = await payload.read_file_bytes()
-    return await client.post_multipart(
-        get_settings().video_audit_upload_url,
-        _video_upload_fields(payload.fields),
-        file_bytes,
-        payload.filename or "video",
-        payload.content_type or "application/octet-stream",
-        brief,
-    )
+    settings = get_settings()
+    if payload.file or payload.stored_file_path:
+        file_bytes = await payload.read_file_bytes()
+        return await client.post_multipart(
+            settings.video_audit_upload_url,
+            _video_upload_fields(payload.fields),
+            file_bytes,
+            payload.filename or "video",
+            payload.content_type or "application/octet-stream",
+            brief,
+        )
+    if _first_scalar(payload.fields.get("video_url")):
+        return await client.post_json(settings.video_audit_json_url, _video_json_payload(payload.fields), brief)
+    raise GatewayError(400, "missing_video_source", "video moderation requires file or video_url")
 
 
 class ParsedPayload:
@@ -394,6 +397,8 @@ def _resolve_content_type(fields: dict[str, Any], file: StarletteUploadFile | No
         return "text"
     if _first_scalar(fields.get("image_base64")) or _first_scalar(fields.get("image_url")):
         return "image"
+    if _first_scalar(fields.get("video_url")):
+        return "video"
     raise GatewayError(400, "missing_content_type", "provide content_type or enough fields to infer it")
 
 
@@ -458,9 +463,26 @@ def _video_upload_fields(fields: dict[str, Any]) -> dict[str, str]:
 
     return _upload_fields(
         fields,
-        optional=("related_text", "provided_asr_text", "skip_ocr", "context"),
+        optional=("video_url", "related_text", "provided_asr_text", "skip_ocr", "context"),
         text_aliases={"provided_asr_text": ("provided_asr_text", "video_transcript")},
     )
+
+
+def _video_json_payload(fields: dict[str, Any]) -> dict[str, Any]:
+    """Build the downstream video JSON request body for URL-based moderation."""
+
+    payload = {
+        "content_id": _required(fields, "content_id"),
+        "user_id": _required(fields, "user_id"),
+        "scene": _first_scalar(fields.get("scene")) or "general",
+        "video_url": _required(fields, "video_url"),
+        "related_text": _first_scalar(fields.get("related_text")),
+        "provided_asr_text": _first_scalar(fields.get("provided_asr_text"))
+        or _first_scalar(fields.get("video_transcript")),
+        "skip_ocr": _to_bool(fields.get("skip_ocr"), False),
+        "context": _context_dict(fields.get("context")),
+    }
+    return payload
 
 
 def _upload_fields(

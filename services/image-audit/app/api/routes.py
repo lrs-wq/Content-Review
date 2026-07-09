@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from functools import lru_cache
 
-from fastapi import APIRouter, File, Form, Query, UploadFile
+from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile
 
 from app.core.auditor import ImageAuditor
 from app.core.brief import to_brief_response
@@ -63,14 +63,15 @@ async def moderate_image_upload(
     content_id: str = Form(...),
     user_id: str = Form(...),
     scene: str = Form("general"),
+    image_url: str | None = Form(None),
     related_text: str | None = Form(None),
     provided_ocr_text: str | None = Form(None),
     skip_ocr: bool = Form(False),
     context: str | None = Form(None),
     brief: bool = Query(True),
-    file: UploadFile = File(...),
+    file: UploadFile | None = File(None),
 ) -> ImageModerationResponse | BriefModerationResponse:
-    """Accept multipart image upload and convert it into the shared request schema."""
+    """Accept multipart image upload or image_url and convert it into the shared request schema."""
 
     context_payload = {}
     if context:
@@ -80,6 +81,10 @@ async def moderate_image_upload(
         if isinstance(parsed_context, dict):
             context_payload = parsed_context
 
+    if file is None and not (image_url and image_url.strip()):
+        raise HTTPException(status_code=400, detail="必须提供图片文件或 image_url")
+
+    image_bytes = await file.read() if file is not None else None
     payload = ImageModerationRequest(
         # Upload bytes are stored on the model but excluded from the serialized response schema.
         content_id=content_id,
@@ -88,9 +93,10 @@ async def moderate_image_upload(
         related_text=related_text,
         provided_ocr_text=provided_ocr_text,
         skip_ocr=skip_ocr,
-        image_bytes=await file.read(),
-        image_mime=file.content_type,
-        image_filename=file.filename,
+        image_url=image_url.strip() if image_url else None,
+        image_bytes=image_bytes,
+        image_mime=file.content_type if file is not None else None,
+        image_filename=file.filename if file is not None else None,
         context=context_payload,
         brief=brief,
     )

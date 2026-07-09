@@ -31,6 +31,7 @@ class Settings:
     max_video_bytes: int
     max_duration_seconds: float
     allowed_extensions: tuple[str, ...]
+    video_download_timeout_seconds: float
     frame_sample_fps: float
     max_sampled_frames: int
     scene_detect_enabled: bool
@@ -120,6 +121,12 @@ def get_settings() -> Settings:
         allowed_extensions=_string_tuple(
             os.getenv("VIDEO_AUDIT_ALLOWED_EXTENSIONS", video_config.get("allowed_extensions")),
             ("mp4", "mov", "webm", "mkv", "avi"),
+        ),
+        video_download_timeout_seconds=float(
+            os.getenv(
+                "VIDEO_AUDIT_DOWNLOAD_TIMEOUT_SECONDS",
+                str(video_config.get("download_timeout_seconds", 30.0)),
+            )
         ),
         frame_sample_fps=float(os.getenv("VIDEO_AUDIT_FRAME_SAMPLE_FPS", str(video_config.get("frame_sample_fps", 1.0)))),
         max_sampled_frames=int(os.getenv("VIDEO_AUDIT_MAX_SAMPLED_FRAMES", str(video_config.get("max_sampled_frames", 60)))),

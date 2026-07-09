@@ -39,6 +39,21 @@ curl -X POST http://127.0.0.1:8030/v1/moderation/video/upload \
   -F "file=@./sample.mp4"
 ```
 
+URL 方式也会下载到临时文件后进入同一条 ffprobe/抽帧/ASR/文本聚合流程：
+
+```bash
+curl -X POST http://127.0.0.1:8030/v1/moderation/video \
+  -H "Content-Type: application/json" \
+  -d '{
+    "content_id": "video_url_1",
+    "user_id": "u1",
+    "scene": "post_video",
+    "video_url": "https://example.com/sample.mp4",
+    "skip_ocr": false,
+    "context": {}
+  }'
+```
+
 ## Pipeline
 
 ```text

@@ -16,6 +16,7 @@ class Settings:
     text_audit_url: str
     image_audit_json_url: str
     image_audit_upload_url: str
+    video_audit_json_url: str
     video_audit_upload_url: str
     request_timeout_seconds: float
     health_timeout_seconds: float
@@ -41,6 +42,10 @@ def get_settings() -> Settings:
         image_audit_upload_url=_env(
             "GATEWAY_IMAGE_AUDIT_UPLOAD_URL",
             "http://127.0.0.1:8020/v1/moderation/image/upload",
+        ),
+        video_audit_json_url=_env(
+            "GATEWAY_VIDEO_AUDIT_JSON_URL",
+            "http://127.0.0.1:8030/v1/moderation/video",
         ),
         video_audit_upload_url=_env(
             "GATEWAY_VIDEO_AUDIT_UPLOAD_URL",

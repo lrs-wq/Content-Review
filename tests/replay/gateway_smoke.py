@@ -128,6 +128,19 @@ def main() -> None:
         )
         image_response.raise_for_status()
 
+        image_url_response = client.post(
+            "/v1/moderation",
+            json={
+                "content_type": "image",
+                "user_id": "u1",
+                "scene": "post_image",
+                "image_url": "https://example.com/sample.jpg",
+                "skip_ocr": False,
+                "context": {},
+            },
+        )
+        image_url_response.raise_for_status()
+
         video_response = client.post(
             "/v1/moderation",
             data={
@@ -140,6 +153,19 @@ def main() -> None:
             files={"file": ("sample.mp4", b"fake-video", "video/mp4")},
         )
         video_response.raise_for_status()
+
+        video_url_response = client.post(
+            "/v1/moderation",
+            json={
+                "content_type": "video",
+                "user_id": "u1",
+                "scene": "post_video",
+                "video_url": "https://example.com/sample.mp4",
+                "skip_ocr": True,
+                "context": {},
+            },
+        )
+        video_url_response.raise_for_status()
 
         async_response = client.post(
             "/v1/moderation/async",
@@ -161,7 +187,9 @@ def main() -> None:
             text_response.json(),
             auto_id_response.json(),
             image_response.json(),
+            image_url_response.json(),
             video_response.json(),
+            video_url_response.json(),
             async_response.json(),
             result_response.json(),
         ],
@@ -175,8 +203,20 @@ def main() -> None:
         raise SystemExit(f"auto-generated content_id missing: {auto_id_response.json()}")
     if fake.calls[2]["kind"] != "multipart" or fake.calls[2]["brief"] is not False:
         raise SystemExit("image upload did not honor brief=false")
-    if fake.calls[3]["content_type"] != "video/mp4":
+    if fake.calls[3]["kind"] != "json" or not fake.calls[3]["url"].endswith("/v1/moderation/image"):
+        raise SystemExit(f"image_url request did not route as image JSON: {fake.calls[3]}")
+    if fake.calls[3]["payload"].get("image_url") != "https://example.com/sample.jpg":
+        raise SystemExit(f"image_url payload missing: {fake.calls[3]}")
+    if not image_url_response.json()["content_id"].startswith("cr_"):
+        raise SystemExit(f"image_url response should include generated content_id: {image_url_response.json()}")
+    if fake.calls[4]["content_type"] != "video/mp4":
         raise SystemExit("video upload did not route as video multipart")
+    if fake.calls[5]["kind"] != "json" or not fake.calls[5]["url"].endswith("/v1/moderation/video"):
+        raise SystemExit(f"video_url request did not route as video JSON: {fake.calls[5]}")
+    if fake.calls[5]["payload"].get("video_url") != "https://example.com/sample.mp4":
+        raise SystemExit(f"video_url payload missing: {fake.calls[5]}")
+    if not video_url_response.json()["content_id"].startswith("cr_"):
+        raise SystemExit(f"video_url response should include generated content_id: {video_url_response.json()}")
     result_body = result_response.json()
     if result_body["status"] != "completed" or result_body["result"]["content_id"] != async_body["content_id"]:
         raise SystemExit(f"async polling result unexpected: {result_body}")

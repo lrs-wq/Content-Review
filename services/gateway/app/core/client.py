@@ -66,6 +66,7 @@ class GatewayClient:
             "text": self.settings.text_audit_url,
             "image": self.settings.image_audit_upload_url,
             "video": self.settings.video_audit_upload_url,
+            "video_json": self.settings.video_audit_json_url,
         }
         results: dict[str, Any] = {}
         async with httpx.AsyncClient(timeout=self.settings.health_timeout_seconds, trust_env=False) as client:

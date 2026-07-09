@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import urllib.error
 import urllib.request
 from dataclasses import dataclass
 from io import BytesIO
+from urllib.parse import urlparse
 
 from PIL import Image, UnidentifiedImageError
 
@@ -107,9 +109,17 @@ class ImageLoader:
     def _download(self, url: str) -> bytes:
         """Download a remote image while respecting the configured byte limit."""
 
+        parsed = urlparse(str(url or "").strip())
+        if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+            raise ImageLoadError("invalid_image_url")
         request = urllib.request.Request(url, headers={"User-Agent": "ContentReviewImageAudit/1.0"})
-        with urllib.request.urlopen(request, timeout=10) as response:
-            content_length = response.headers.get("Content-Length")
-            if content_length and int(content_length) > self.settings.max_image_bytes:
-                raise ImageLoadError(f"image_too_large:{content_length}>{self.settings.max_image_bytes}")
-            return response.read(self.settings.max_image_bytes + 1)
+        try:
+            with urllib.request.urlopen(request, timeout=10) as response:
+                content_length = response.headers.get("Content-Length")
+                if content_length and int(content_length) > self.settings.max_image_bytes:
+                    raise ImageLoadError(f"image_too_large:{content_length}>{self.settings.max_image_bytes}")
+                return response.read(self.settings.max_image_bytes + 1)
+        except ImageLoadError:
+            raise
+        except (urllib.error.URLError, TimeoutError, OSError) as exc:
+            raise ImageLoadError(f"image_download_failed:{exc}") from exc
