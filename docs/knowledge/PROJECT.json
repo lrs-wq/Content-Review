@@ -1,0 +1,85 @@
+{
+  "schema_version": 1,
+  "id": "Content_Review",
+  "display_name": "Content Review",
+  "description": "社区 UGC 文字、图片和视频分层审核服务及统一网关。",
+  "status": "active",
+  "domains": ["content-moderation", "text", "image", "video", "ocr", "asr"],
+  "entrypoints": [
+    {
+      "path": "services/gateway/app/main.py",
+      "purpose": "统一审核网关与异步结果查询"
+    },
+    {
+      "path": "services/text-audit/app/main.py",
+      "purpose": "文字规则与语义审核服务"
+    },
+    {
+      "path": "services/image-audit/app/main.py",
+      "purpose": "图片 OCR、NSFW、裸露和视觉安全审核服务"
+    },
+    {
+      "path": "services/video-audit/app/main.py",
+      "purpose": "视频抽帧、图像审核、ASR 与文字审核编排"
+    },
+    {
+      "path": "docker-compose.yml",
+      "purpose": "四服务端口、环境与依赖拓扑"
+    }
+  ],
+  "verification": [
+    "python tests/replay/gateway_smoke.py",
+    "python tests/replay/text_audit_smoke.py",
+    "python tests/replay/image_audit_smoke.py",
+    "python tests/replay/video_audit_smoke.py",
+    "python tests/replay/brief_reason_smoke.py",
+    "docker compose config"
+  ],
+  "source_docs": [
+    "README.md",
+    "API.md",
+    "API_8040.md",
+    "services/gateway/README.md",
+    "services/text-audit/README.md",
+    "services/image-audit/README.md",
+    "services/video-audit/README.md"
+  ],
+  "watch_rules": [
+    {
+      "paths": ["services/gateway/**", "API_8040.md"],
+      "knowledge": ["gateway", "api", "async-job"]
+    },
+    {
+      "paths": ["services/text-audit/**"],
+      "knowledge": ["text-moderation", "model", "rule"]
+    },
+    {
+      "paths": ["services/image-audit/**"],
+      "knowledge": ["image-moderation", "ocr", "vision-model"]
+    },
+    {
+      "paths": ["services/video-audit/**"],
+      "knowledge": ["video-moderation", "frame-sampling", "asr"]
+    },
+    {
+      "paths": ["configs/**"],
+      "knowledge": ["policy", "threshold", "config"]
+    },
+    {
+      "paths": ["docker-compose.yml", "services/**/Dockerfile", "services/**/requirements*.txt"],
+      "knowledge": ["deployment", "dependency", "service-topology"]
+    },
+    {
+      "paths": ["shared/**", "tests/**", "API.md"],
+      "knowledge": ["contract", "shared-schema", "verification"]
+    }
+  ],
+  "excluded_content": [
+    "user text, images and videos",
+    "OCR and ASR payloads",
+    "evidence snapshots",
+    "review and appeal records",
+    "credentials and tokens",
+    "model weights"
+  ]
+}

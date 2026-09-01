@@ -1,0 +1,287 @@
+{
+  "schema_version": 1,
+  "project": "Content_Review",
+  "nodes": [
+    {
+      "id": "review.project",
+      "type": "project",
+      "name": "Content Review",
+      "status": "active",
+      "tags": ["UGC", "审核", "文字", "图片", "视频"],
+      "evidence": "README.md"
+    },
+    {
+      "id": "review.service.gateway",
+      "type": "service",
+      "name": "统一审核网关",
+      "port": 8040,
+      "status": "active",
+      "tags": ["gateway", "brief-response", "async-polling"],
+      "evidence": "services/gateway/app/main.py"
+    },
+    {
+      "id": "review.api.unified",
+      "type": "api",
+      "name": "文字、图片、视频统一审核与结果查询 API",
+      "tags": ["/v1/moderation", "content_id", "brief"],
+      "evidence": "API_8040.md"
+    },
+    {
+      "id": "review.service.text",
+      "type": "service",
+      "name": "文字审核服务",
+      "port": 8010,
+      "status": "active",
+      "tags": ["rules", "semantic-model", "text"],
+      "evidence": "services/text-audit/app/main.py"
+    },
+    {
+      "id": "review.service.image",
+      "type": "service",
+      "name": "图片审核服务",
+      "port": 8020,
+      "status": "active",
+      "tags": ["OCR", "NSFW", "NudeNet", "vision-safety"],
+      "evidence": "services/image-audit/app/main.py"
+    },
+    {
+      "id": "review.service.video",
+      "type": "service",
+      "name": "视频审核服务",
+      "port": 8030,
+      "status": "active",
+      "tags": ["FFmpeg", "scene-detect", "ASR", "frames"],
+      "evidence": "services/video-audit/app/main.py"
+    },
+    {
+      "id": "review.service.admin",
+      "type": "service",
+      "name": "人工复核与申诉后台",
+      "status": "planned",
+      "tags": ["human-review", "appeal", "feedback"],
+      "evidence": "README.md"
+    },
+    {
+      "id": "review.config.policy",
+      "type": "config",
+      "name": "审核政策与规则配置",
+      "path": "configs/policy.yaml",
+      "tags": ["policy", "rules", "risk"],
+      "evidence": "configs/policy.yaml"
+    },
+    {
+      "id": "review.config.thresholds",
+      "type": "config",
+      "name": "模型与风险阈值配置",
+      "path": "configs/thresholds.yaml",
+      "tags": ["threshold", "score", "review"],
+      "evidence": "configs/thresholds.yaml"
+    },
+    {
+      "id": "review.component.text_rules",
+      "type": "component",
+      "name": "文字归一化、词库与规则模板",
+      "tags": ["sensitive-word", "whitelist", "blacklist"],
+      "evidence": "services/text-audit/README.md"
+    },
+    {
+      "id": "review.component.image_ocr",
+      "type": "component",
+      "name": "图片 OCR 文本提取",
+      "tags": ["PaddleOCR", "text-in-image"],
+      "evidence": "services/image-audit/README.md"
+    },
+    {
+      "id": "review.component.image_safety",
+      "type": "component",
+      "name": "图片 NSFW、裸露与视觉安全判断",
+      "tags": ["Falconsai", "NudeNet", "ShieldGemma"],
+      "evidence": "services/image-audit/README.md"
+    },
+    {
+      "id": "review.component.video_frames",
+      "type": "component",
+      "name": "固定抽帧与场景切换补强",
+      "tags": ["FFmpeg", "PySceneDetect", "1fps"],
+      "evidence": "services/video-audit/README.md"
+    },
+    {
+      "id": "review.component.video_asr",
+      "type": "component",
+      "name": "视频音频 faster-whisper 转写",
+      "tags": ["ASR", "faster-whisper", "transcript"],
+      "evidence": "services/video-audit/README.md"
+    },
+    {
+      "id": "review.store.async_jobs",
+      "type": "store",
+      "name": "网关异步审核任务状态目录",
+      "path": "storage/moderation-jobs",
+      "tags": ["async", "polling", "job-status"],
+      "evidence": "docker-compose.yml"
+    },
+    {
+      "id": "review.contract.brief_response",
+      "type": "contract",
+      "name": "简要响应 content_id/result/action/risk_level/reason",
+      "tags": ["response", "machine-code", "中文reason"],
+      "evidence": "README.md"
+    },
+    {
+      "id": "review.deployment.compose",
+      "type": "deployment",
+      "name": "Docker Compose 四服务拓扑",
+      "path": "docker-compose.yml",
+      "tags": ["docker-compose", "ports", "depends_on"],
+      "evidence": "docker-compose.yml"
+    },
+    {
+      "id": "review.decision.layered_moderation",
+      "type": "decision",
+      "name": "规则、小模型、上下文、灰区 Agent 与人工复核分层执行",
+      "status": "accepted",
+      "tags": ["layered", "gray-zone", "human-review"],
+      "evidence": "README.md"
+    }
+  ],
+  "edges": [
+    {
+      "from": "review.project",
+      "relation": "contains",
+      "to": "review.service.gateway",
+      "evidence": "README.md"
+    },
+    {
+      "from": "review.service.gateway",
+      "relation": "exposes",
+      "to": "review.api.unified",
+      "evidence": "API_8040.md"
+    },
+    {
+      "from": "review.service.gateway",
+      "relation": "calls",
+      "to": "review.service.text",
+      "evidence": "docker-compose.yml"
+    },
+    {
+      "from": "review.service.gateway",
+      "relation": "calls",
+      "to": "review.service.image",
+      "evidence": "docker-compose.yml"
+    },
+    {
+      "from": "review.service.gateway",
+      "relation": "calls",
+      "to": "review.service.video",
+      "evidence": "docker-compose.yml"
+    },
+    {
+      "from": "review.service.gateway",
+      "relation": "writes",
+      "to": "review.store.async_jobs",
+      "evidence": "docker-compose.yml"
+    },
+    {
+      "from": "review.service.gateway",
+      "relation": "implements",
+      "to": "review.contract.brief_response",
+      "evidence": "services/gateway/app/main.py"
+    },
+    {
+      "from": "review.service.text",
+      "relation": "uses",
+      "to": "review.component.text_rules",
+      "evidence": "services/text-audit/README.md"
+    },
+    {
+      "from": "review.service.text",
+      "relation": "reads_config",
+      "to": "review.config.policy",
+      "evidence": "services/text-audit/app/main.py"
+    },
+    {
+      "from": "review.service.text",
+      "relation": "reads_config",
+      "to": "review.config.thresholds",
+      "evidence": "services/text-audit/app/main.py"
+    },
+    {
+      "from": "review.service.image",
+      "relation": "uses",
+      "to": "review.component.image_ocr",
+      "evidence": "services/image-audit/README.md"
+    },
+    {
+      "from": "review.service.image",
+      "relation": "uses",
+      "to": "review.component.image_safety",
+      "evidence": "services/image-audit/README.md"
+    },
+    {
+      "from": "review.service.image",
+      "relation": "calls",
+      "to": "review.service.text",
+      "evidence": "docker-compose.yml"
+    },
+    {
+      "from": "review.service.video",
+      "relation": "uses",
+      "to": "review.component.video_frames",
+      "evidence": "services/video-audit/README.md"
+    },
+    {
+      "from": "review.service.video",
+      "relation": "uses",
+      "to": "review.component.video_asr",
+      "evidence": "services/video-audit/README.md"
+    },
+    {
+      "from": "review.service.video",
+      "relation": "calls",
+      "to": "review.service.image",
+      "evidence": "docker-compose.yml"
+    },
+    {
+      "from": "review.service.video",
+      "relation": "calls",
+      "to": "review.service.text",
+      "evidence": "docker-compose.yml"
+    },
+    {
+      "from": "review.deployment.compose",
+      "relation": "deploys",
+      "to": "review.service.gateway",
+      "evidence": "docker-compose.yml"
+    },
+    {
+      "from": "review.deployment.compose",
+      "relation": "deploys",
+      "to": "review.service.text",
+      "evidence": "docker-compose.yml"
+    },
+    {
+      "from": "review.deployment.compose",
+      "relation": "deploys",
+      "to": "review.service.image",
+      "evidence": "docker-compose.yml"
+    },
+    {
+      "from": "review.deployment.compose",
+      "relation": "deploys",
+      "to": "review.service.video",
+      "evidence": "docker-compose.yml"
+    },
+    {
+      "from": "review.project",
+      "relation": "governed_by",
+      "to": "review.decision.layered_moderation",
+      "evidence": "README.md"
+    },
+    {
+      "from": "review.service.admin",
+      "relation": "planned_consumer_of",
+      "to": "review.contract.brief_response",
+      "evidence": "README.md"
+    }
+  ]
+}

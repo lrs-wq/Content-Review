@@ -1,0 +1,5 @@
+{"date":"2026-07-08","type":"feature","summary":"加入异步审核结果轮询与低俗词库。","areas":["async-job","text-rules"],"source_commit":"2a521a9"}
+{"date":"2026-07-08","type":"feature","summary":"把异步结果轮询合并到 8040 网关端口。","areas":["gateway","async-polling"],"source_commit":"e82c552"}
+{"date":"2026-07-08","type":"contract","summary":"统一文字、图片和视频审核响应格式。","areas":["api","response-contract"],"source_commit":"4975c6d"}
+{"date":"2026-07-09","type":"documentation","summary":"明确审核原因 reason 字段格式。","areas":["api","reason"],"source_commit":"8ab600e"}
+{"date":"2026-07-09","type":"feature","summary":"图片和视频审核支持 URL 输入。","areas":["image-api","video-api","url-input"],"source_commit":"f5e82a2"}
