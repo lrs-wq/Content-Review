@@ -42,7 +42,9 @@
     "services/gateway/README.md",
     "services/text-audit/README.md",
     "services/image-audit/README.md",
-    "services/video-audit/README.md"
+    "services/video-audit/README.md",
+    "LICENSE",
+    "COPYRIGHT.md"
   ],
   "watch_rules": [
     {
@@ -72,6 +74,16 @@
     {
       "paths": ["shared/**", "tests/**", "API.md"],
       "knowledge": ["contract", "shared-schema", "verification"]
+    },
+    {
+      "paths": [
+        "LICENSE",
+        "COPYRIGHT.md"
+      ],
+      "knowledge": [
+        "licensing",
+        "distribution"
+      ]
     }
   ],
   "excluded_content": [

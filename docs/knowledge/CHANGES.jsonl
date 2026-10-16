@@ -3,3 +3,4 @@
 {"date":"2026-07-08","type":"contract","summary":"统一文字、图片和视频审核响应格式。","areas":["api","response-contract"],"source_commit":"4975c6d"}
 {"date":"2026-07-09","type":"documentation","summary":"明确审核原因 reason 字段格式。","areas":["api","reason"],"source_commit":"8ab600e"}
 {"date":"2026-07-09","type":"feature","summary":"图片和视频审核支持 URL 输入。","areas":["image-api","video-api","url-input"],"source_commit":"f5e82a2"}
+{"date": "2026-10-16", "type": "licensing", "summary": "为维护者有权许可的原创内容添加 PolyForm Noncommercial 1.0.0，商业使用须单独书面授权；明确第三方及上游 copyleft 边界，保留旧版本既有授权；不改变运行行为。", "areas": ["licensing", "distribution"], "evidence": ["LICENSE", "COPYRIGHT.md"]}

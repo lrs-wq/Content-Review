@@ -1,5 +1,12 @@
 # 社区敏感内容 AI 审核方案
 
+## 许可证与商业使用 / License and commercial use
+
+**本仓库中维护者有权许可的原创内容采用 [PolyForm Noncommercial 1.0.0](LICENSE)，仅许可非商业用途；商业使用须另行取得书面授权。**
+第三方内容、必须保留上游许可的部分及旧版本已授予的权利不受此变更覆盖。详见 [版权与第三方声明](COPYRIGHT.md)。
+
+Original material the maintainer is entitled to license is available for noncommercial purposes under [PolyForm Noncommercial 1.0.0](LICENSE). Commercial use requires separate written permission. Third-party and previously granted rights are preserved; see [COPYRIGHT.md](COPYRIGHT.md).
+
 本项目面向社区 UGC 内容审核，覆盖文字、图片、视频三类内容。整体设计采用“分开设计、分开运行、统一接口接入”的方式：文字、图片、视频分别作为独立审核服务部署，业务侧通过 HTTP API 调用统一网关或直接调用各服务。
 
 ## 方案结论
