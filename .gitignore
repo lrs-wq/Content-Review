@@ -35,3 +35,9 @@ storage/
 Thumbs.db
 .idea/
 .vscode/
+
+# Selected README documentation assets only
+!/docs/showcase/workflow.svg
+!/docs/showcase/text-allow.png
+!/docs/showcase/text-review.png
+!/docs/showcase/text-demo.gif

@@ -1,13 +1,37 @@
 # 社区敏感内容 AI 审核方案
 
-## 许可证与商业使用 / License and commercial use
-
-**本仓库中维护者有权许可的原创内容采用 [PolyForm Noncommercial 1.0.0](LICENSE)，仅许可非商业用途；商业使用须另行取得书面授权。**
-第三方内容、必须保留上游许可的部分及旧版本已授予的权利不受此变更覆盖。详见 [版权与第三方声明](COPYRIGHT.md)。
-
-Original material the maintainer is entitled to license is available for noncommercial purposes under [PolyForm Noncommercial 1.0.0](LICENSE). Commercial use requires separate written permission. Third-party and previously granted rights are preserved; see [COPYRIGHT.md](COPYRIGHT.md).
-
 本项目面向社区 UGC 内容审核，覆盖文字、图片、视频三类内容。整体设计采用“分开设计、分开运行、统一接口接入”的方式：文字、图片、视频分别作为独立审核服务部署，业务侧通过 HTTP API 调用统一网关或直接调用各服务。
+
+## 效果预览
+
+![内容审核测试台：真实文本规则命中后展示review、风险等级和中文原因](docs/showcase/text-review.png)
+
+| 本地输入样例 | 本次规则演示结果 |
+| --- | --- |
+| 今天带猫咪去公园散步。 | `allow` / `none` |
+| 加微信领取优惠 | `review` / `medium`，命中广告引流规则 |
+
+截图使用仓库原有测试台和真实文本服务，在本机关闭模型与 Agent 后运行。它展示规则/启发式链路与响应结构，不是完整多模态模型效果或性能评测。[查看放行截图、动图与复现步骤](docs/showcase/README.md)。
+
+## 工作流程
+
+![内容输入经8040网关进入独立媒体审核服务，再形成统一响应](docs/showcase/workflow.svg)
+
+## 项目演示
+
+无需下载模型即可复现上方文本规则演示。在已安装文本服务依赖的 Python 环境中执行：
+
+```bash
+python docs/showcase/run_text_demo.py
+# 另开终端启动原有测试台
+python tools/text-audit-ui/serve.py --host 127.0.0.1 --port 18050
+```
+
+打开 `http://127.0.0.1:18050/`，取消“8040 异步提交 + 同端口轮询”，将直连文本接口改为 `http://127.0.0.1:18010/v1/moderation/text`，输入上表样例并点击“开始审核”。
+
+演示脚本只使用临时阈值配置，不改写项目配置。图片、视频与统一网关演示需先部署对应服务，见 [测试台说明](tools/text-audit-ui/README.md) 与 [8040 接口文档](API_8040.md)。
+
+---
 
 ## 方案结论
 
@@ -1037,3 +1061,10 @@ storage/reports/image_safety_report_latest.json
 - 不建议长期保存高敏原图，证据存储应做权限隔离、脱敏和过期清理。
 - 审核策略必须版本化，否则线上误杀无法快速回滚。
 - 人审结果不要直接无校验地进入训练集，需要仲裁和质检，避免数据污染。
+
+## 许可证与商业使用 / License and commercial use
+
+**本仓库中维护者有权许可的原创内容采用 [PolyForm Noncommercial 1.0.0](LICENSE)，仅许可非商业用途；商业使用须另行取得书面授权。**
+第三方内容、必须保留上游许可的部分及旧版本已授予的权利不受此变更覆盖。详见 [版权与第三方声明](COPYRIGHT.md)。
+
+Original material the maintainer is entitled to license is available for noncommercial purposes under [PolyForm Noncommercial 1.0.0](LICENSE). Commercial use requires separate written permission. Third-party and previously granted rights are preserved; see [COPYRIGHT.md](COPYRIGHT.md).
